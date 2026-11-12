@@ -1,0 +1,22 @@
+# Symfony
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+
+# PHPUnit
+/.phpunit.cache/
+.phpunit.result.cache
+
+# Traces IA : à envoyer par e-mail dans une archive ZIP, pas dans le dépôt
+/ai-traces/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
