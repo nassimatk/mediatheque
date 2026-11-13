@@ -24,6 +24,18 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
 - **Décision** : PHP 8.3-FPM, Nginx, MySQL 8 via `compose.yaml` ; schéma géré uniquement par les migrations.
 - **Raison** : installation reproductible en une commande (niveau 5).
 
+### D-006 — 2026-11-13 — Version d'EasyAdmin figée à ^5.10
+- **Décision** : EasyAdmin 5 (version installée), contrainte `^5.10` au lieu de `*`.
+- **Raison** : éviter qu'une mise à jour majeure imprévue casse le back-office.
+
+### D-007 — 2026-11-13 — Stratégie de test
+- **Décision** : PHPUnit 11 (`symfony/test-pack`), base MySQL dédiée `mediatheque_test`, tests répartis en `Unit`, `Integration` et `Functional`.
+- **Raison** : les règles métier du niveau 2 seront testées contre un vrai MySQL.
+
+### D-008 — 2026-11-13 — Port web par défaut 8081
+- **Décision** : l'application est exposée sur `localhost:8081`.
+- **Raison** : le port 8080 est souvent déjà occupé sur les postes de développement ; il reste modifiable via `WEB_PORT` dans `.env`.
+
 ## Réponses aux « Questions à trancher »
 
 > À rédiger lors de la conception du modèle (étape 2).
