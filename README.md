@@ -31,7 +31,7 @@ Le guide complet est dans [`INSTALL.md`](INSTALL.md). En résumé :
 docker compose up -d --build
 ```
 
-Application : http://localhost:8080
+Application : http://localhost:8081
 
 ### Première installation du squelette Symfony (une seule fois)
 

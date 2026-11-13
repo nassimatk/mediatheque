@@ -6,12 +6,12 @@
 
 - Docker et Docker Compose v2
 - Git
-- Ports libres : 8080 (web) et 3307 (MySQL), modifiables dans `.env.local`
+- Ports libres : 8081 (web) et 3307 (MySQL), modifiables dans `.env.local`
 
 ## Installation
 
 ```bash
-git clone <URL_DU_DEPOT>
+git clone <https://github.com/nassimatk/mediatheque.git>
 cd mediatheque
 docker compose up -d --build
 ```
