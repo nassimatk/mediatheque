@@ -6,7 +6,7 @@
 
 - Docker et Docker Compose v2
 - Git
-- Ports libres : 8080 (web) et 3307 (MySQL), modifiables dans `.env.local`
+- Ports libres : 8081 (web) et 3307 (MySQL), modifiables dans `.env.local`
 
 ## Installation
 
