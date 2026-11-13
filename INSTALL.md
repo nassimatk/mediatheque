@@ -11,7 +11,7 @@
 ## Installation
 
 ```bash
-git clone <URL_DU_DEPOT>
+git clone <https://github.com/nassimatk/mediatheque.git>
 cd mediatheque
 docker compose up -d --build
 ```
