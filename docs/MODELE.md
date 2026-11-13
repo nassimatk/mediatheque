@@ -1,7 +1,7 @@
 # Modèle de données
 
 Réseau de deux médiathèques de quartier (≈ 8 000 documents, ≈ 1 500 adhérents). Ce document décrit le modèle de données et explique les choix de conception. Les noms des entités et des statuts sont ceux du code (`src/Entity/`, `src/Enum/`) ; le glossaire en fin de document donne la correspondance avec le vocabulaire métier.
-
+Auteur : Taikouk Nassima
 ## 1. Diagramme
 
 ```mermaid
