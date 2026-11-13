@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Catalogue — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold mb-3"><i class="bi bi-book me-2"></i>Rechercher dans le catalogue</h1>
+    
+    <form method="get" class="row g-3 bg-white p-3 rounded shadow-sm border">
+        <div class="col-md-7">
+            <input type="text" name="q" class="form-control" placeholder="Titre, auteur, éditeur, ISBN..." value="{{ search }}">
+        </div>
+        <div class="col-md-3">
+            <select name="type" class="form-select">
+                <option value="">Tous les types</option>
+                <option value="book" {{ type == 'book' ? 'selected' : '' }}>Livre</option>
+                <option value="comic" {{ type == 'comic' ? 'selected' : '' }}>Bande dessinée</option>
+                <option value="dvd" {{ type == 'dvd' ? 'selected' : '' }}>DVD</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search me-1"></i>Filtrer
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for edition in editions %}
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <span class="badge bg-secondary mb-2">{{ edition.type.label }}</span>
+                    <h5 class="card-title">{{ edition.work.title }}</h5>
+                    <p class="card-text small text-muted mb-1">
+                        <strong>Éditeur :</strong> {{ edition.publisher }} ({{ edition.publicationYear }})
+                    </p>
+                    <p class="card-text small text-muted mb-2">
+                        <strong>ISBN :</strong> {{ edition.isbn }}
+                    </p>
+                    <div class="small">
+                        {% set dispoCount = 0 %}
+                        {% for c in edition.copies %}
+                            {% if c.status.value == 'available' %}
+                                {% set dispoCount = dispoCount + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if dispoCount > 0 %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="bi bi-check-circle me-1"></i>{{ dispoCount }} exemplaire(s) disponible(s)
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                <i class="bi bi-x-circle me-1"></i>Non disponible actuellement
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-top-0">
+                    <a href="{{ path('app_catalog_show', {id: edition.id}) }}" class="btn btn-sm btn-outline-primary w-100">
+                        Détails & Disponibilité par site
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-warning">
+                Aucun document ne correspond à vos critères de recherche.
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

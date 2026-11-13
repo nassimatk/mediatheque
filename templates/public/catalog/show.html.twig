@@ -1,0 +1,76 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ edition.work.title }} — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ path('app_home') }}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{{ path('app_catalog') }}">Catalogue</a></li>
+        <li class="breadcrumb-item active">{{ edition.work.title }}</li>
+    </ol>
+</nav>
+
+<div class="card shadow-sm border mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <span class="badge bg-primary mb-2">{{ edition.type.label }}</span>
+                <h1 class="h3 fw-bold">{{ edition.work.title }}</h1>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <strong>Éditeur :</strong> {{ edition.publisher }}
+            </div>
+            <div class="col-sm-4">
+                <strong>Année :</strong> {{ edition.publicationYear }}
+            </div>
+            <div class="col-sm-4">
+                <strong>ISBN :</strong> {{ edition.isbn }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h4 fw-bold mb-3"><i class="bi bi-geo-alt me-2"></i>Exemplaires physiques par site</h2>
+<div class="card shadow-sm border">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Code-barres</th>
+                    <th>Site de rattachement</th>
+                    <th>État</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for copy in edition.copies %}
+                    <tr>
+                        <td><code>{{ copy.barcode }}</code></td>
+                        <td>{{ copy.site.name }}</td>
+                        <td>
+                            {% if copy.status.value == 'available' %}
+                                <span class="badge bg-success">{{ copy.status.label }}</span>
+                            {% elseif copy.status.value == 'borrowed' %}
+                                <span class="badge bg-warning text-dark">{{ copy.status.label }}</span>
+                            {% elseif copy.status.value == 'reserved' %}
+                                <span class="badge bg-info text-dark">{{ copy.status.label }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ copy.status.label }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-3">Aucun exemplaire inventorié.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

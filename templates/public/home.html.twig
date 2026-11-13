@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Accueil — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="p-5 mb-4 bg-white rounded-3 shadow-sm border text-center">
+    <div class="container-fluid py-3">
+        <h1 class="display-5 fw-bold text-primary">Bienvenue sur le réseau des Médiathèques</h1>
+        <p class="col-md-8 fs-5 mx-auto text-muted">
+            Découvrez plus de 8 000 documents répartis sur nos deux médiathèques de quartier : Centre-Ville et Quartier Nord.
+        </p>
+        <div class="d-flex justify-content-center gap-3 mt-4">
+            <a href="{{ path('app_catalog') }}" class="btn btn-primary btn-lg px-4">
+                <i class="bi bi-search me-2"></i>Explorer le catalogue
+            </a>
+            {% if not app.user %}
+                <a href="{{ path('app_login') }}" class="btn btn-outline-secondary btn-lg px-4">
+                    <i class="bi bi-person me-2"></i>Espace Adhérent
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="my-5">
+    <h2 class="h4 mb-4 fw-bold"><i class="bi bi-stars text-warning me-2"></i>Dernières acquisitions</h2>
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for edition in editions %}
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <span class="badge bg-secondary mb-2">{{ edition.type.label }}</span>
+                        <h5 class="card-title text-truncate">{{ edition.work.title }}</h5>
+                        <p class="card-text small text-muted mb-1">
+                            <strong>Éditeur :</strong> {{ edition.publisher }} ({{ edition.publicationYear }})
+                        </p>
+                        <p class="card-text small text-muted">
+                            <strong>ISBN :</strong> {{ edition.isbn }}
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <a href="{{ path('app_catalog_show', {id: edition.id}) }}" class="btn btn-sm btn-outline-primary w-100">
+                            Voir la disponibilité
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">Aucun document pour le moment.</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
