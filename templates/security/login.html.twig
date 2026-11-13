@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-sm mt-4">
+            <div class="card-body p-4">
+                <h1 class="card-title h4 text-center mb-4">
+                    <i class="bi bi-lock me-2 text-primary"></i>Connexion
+                </h1>
+
+                {% if error %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        {{ error.messageKey|trans(error.messageData, 'security') }}
+                    </div>
+                {% endif %}
+
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="inputEmail" class="form-label">Adresse email</label>
+                        <input type="email" id="inputEmail" name="_username"
+                               class="form-control"
+                               value="{{ last_username }}"
+                               autocomplete="email" autofocus required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputPassword" class="form-label">Mot de passe</label>
+                        <input type="password" id="inputPassword" name="_password"
+                               class="form-control"
+                               autocomplete="current-password" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember_me" name="_remember_me">
+                        <label class="form-check-label" for="remember_me">Se souvenir de moi</label>
+                    </div>
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Se connecter
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+                <p class="text-center text-muted small mb-0">
+                    <a href="{{ path('app_catalog') }}" class="text-decoration-none">
+                        <i class="bi bi-search me-1"></i>Consulter le catalogue sans connexion
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        {# Comptes de démo pour évaluation #}
+        <div class="card mt-3 border-secondary">
+            <div class="card-header bg-secondary text-white small py-2">
+                <i class="bi bi-info-circle me-1"></i>Comptes de démonstration
+            </div>
+            <div class="card-body small py-2">
+                <table class="table table-sm mb-0">
+                    <tr><td><strong>Admin</strong></td><td>admin@mediatheque.ma</td><td>admin123</td></tr>
+                    <tr><td><strong>Bibliothécaire</strong></td><td>librarian@mediatheque.ma</td><td>librarian123</td></tr>
+                    <tr><td><strong>Adhérent</strong></td><td>adherent@mediatheque.ma</td><td>adherent123</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

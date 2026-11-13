@@ -12,6 +12,7 @@ use App\Entity\Penalty;
 use App\Entity\Reservation;
 use App\Entity\Site;
 use App\Entity\SubscriptionPlan;
+use App\Entity\User;
 use App\Entity\Work;
 use App\Enum\ContributorRole;
 use App\Enum\CopyStatus;
@@ -21,9 +22,14 @@ use App\Enum\ReservationStatus;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class AppFixtures extends Fixture
 {
+    public function __construct(
+        private readonly UserPasswordHasherInterface $hasher,
+    ) {}
+
     public function load(ObjectManager $manager): void
     {
         $faker = Factory::create('fr_FR');
@@ -643,6 +649,35 @@ class AppFixtures extends Fixture
             $manager->persist($res3);
         }
 
+        // Comptes utilisateurs de démonstration (admin, bibliothécaire, adhérent)
+        $this->createDemoUsers($manager, $members[0]);
+
         $manager->flush();
+    }
+    // -------------------------------------------------------------------------
+
+    private function createDemoUsers(ObjectManager $manager, Member $adherentMember): void
+    {
+        // Administrateur
+        $admin = new User();
+        $admin->setEmail('admin@mediatheque.ma')
+              ->setRoles(['ROLE_ADMIN'])
+              ->setPassword($this->hasher->hashPassword($admin, 'admin123'));
+        $manager->persist($admin);
+
+        // Bibliothécaire
+        $librarian = new User();
+        $librarian->setEmail('librarian@mediatheque.ma')
+                  ->setRoles(['ROLE_LIBRARIAN'])
+                  ->setPassword($this->hasher->hashPassword($librarian, 'librarian123'));
+        $manager->persist($librarian);
+
+        // Adhérent (lié à la fiche membre fournie)
+        $memberUser = new User();
+        $memberUser->setEmail('adherent@mediatheque.ma')
+                   ->setRoles(['ROLE_MEMBER'])
+                   ->setPassword($this->hasher->hashPassword($memberUser, 'adherent123'))
+                   ->setMember($adherentMember);
+        $manager->persist($memberUser);
     }
 }
