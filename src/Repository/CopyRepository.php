@@ -69,4 +69,15 @@ class CopyRepository extends ServiceEntityRepository
 
         return $count > 0;
     }
+
+    /**
+     * Nombre total d'exemplaires dans le réseau.
+     */
+    public function countTotalCopies(): int
+    {
+        return (int) $this->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

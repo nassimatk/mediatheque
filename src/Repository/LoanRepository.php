@@ -46,4 +46,40 @@ class LoanRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Nombre total de prêts enregistrés dans l'application.
+     */
+    public function countTotalLoans(): int
+    {
+        return (int) $this->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Top des éditions les plus empruntées (avec le nombre d'emprunts).
+     *
+     * @return array<int, array{edition: \App\Entity\Edition, loanCount: int}>
+     */
+    public function getTopBorrowedEditions(int $limit = 10): array
+    {
+        $rows = $this->createQueryBuilder('l')
+            ->select('e AS edition, COUNT(l.id) AS loanCount')
+            ->join('l.copy', 'c')
+            ->join('c.edition', 'e')
+            ->join('e.work', 'w')
+            ->groupBy('e.id')
+            ->orderBy('loanCount', 'DESC')
+            ->addOrderBy('w.title', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return array_map(fn($row) => [
+            'edition'   => $row['edition'],
+            'loanCount' => (int) $row['loanCount'],
+        ], $rows);
+    }
 }

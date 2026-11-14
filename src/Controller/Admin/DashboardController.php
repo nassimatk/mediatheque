@@ -47,5 +47,8 @@ class DashboardController extends AbstractDashboardController
 
         yield MenuItem::section('Réseau');
         yield MenuItem::linkTo(SiteCrudController::class, 'Sites', 'fa fa-building');
+
+        yield MenuItem::section('Pilotage');
+        yield MenuItem::linkToRoute('Statistiques du réseau', 'fa fa-chart-line', 'admin_stats');
     }
 }
