@@ -39,15 +39,17 @@ class ReservationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Retourne la prochaine réservation Pending pour une édition (ordre FIFO par createdAt).
-     * Utilisé par LoanService::return() pour notifier l'adhérent suivant.
+     * Retourne la prochaine réservation Pending sans exemplaire attribué pour une édition (ordre FIFO).
+     * Les réservations déjà en transit (qui ont déjà un copy IS NOT NULL) sont ignorées.
      */
     public function findNextPendingForEdition(Edition $edition): ?Reservation
     {
         return $this->createQueryBuilder('r')
             ->where('r.edition = :edition')
             ->andWhere('r.status = :status')
+            ->andWhere('r.copy IS NULL')
             ->orderBy('r.createdAt', 'ASC')
+            ->addOrderBy('r.id', 'ASC')
             ->setMaxResults(1)
             ->setParameter('edition', $edition)
             ->setParameter('status', ReservationStatus::Pending)
@@ -74,7 +76,6 @@ class ReservationRepository extends ServiceEntityRepository
 
     /**
      * Réservation "Ready" actuellement attribuée à un exemplaire précis.
-     * Utilisé lors du checkout pour vérifier que c'est bien l'adhérent réservant qui emprunte.
      */
     public function findReadyReservationForCopy(Copy $copy): ?Reservation
     {
@@ -88,7 +89,7 @@ class ReservationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Réservation active (Pending ou Ready) associée à un exemplaire (notamment en transit ou mis de côté).
+     * Réservation active (Pending ou Ready) associée à un exemplaire.
      */
     public function findActiveReservationForCopy(Copy $copy): ?Reservation
     {
@@ -103,7 +104,6 @@ class ReservationRepository extends ServiceEntityRepository
 
     /**
      * Liste des réservations prêtes dont la date limite de retrait est dépassée.
-     * Utilisé par le service et la commande d'expiration.
      *
      * @return Reservation[]
      */

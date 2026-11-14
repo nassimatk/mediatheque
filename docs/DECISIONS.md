@@ -41,12 +41,30 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
 - **Raison** : le prêt porte sur l'exemplaire, la réservation sur l'édition, et le catalogue regroupe par œuvre. Trois niveaux, trois besoins.
 
 ### Q2 — 2026-11-13 — Réserver un document disponible uniquement dans l'autre site ?
-- **Décision** : oui. La réservation indique un site de retrait. Si l'exemplaire attribué est sur l'autre site, il passe « en transit » vers le site de retrait.
-- **Raison** : un réseau de médiathèques sert justement à partager les collections.
+- **Décision** : oui. La réservation indique un site de retrait.
+  - Si un exemplaire est déjà disponible sur le site de retrait : la réservation est refusée (l'adhérent doit simplement aller le chercher en rayon).
+  - Si un exemplaire est disponible uniquement sur l'autre site : l'exemplaire est attribué à la réservation et passe immédiatement en `CopyStatus::InTransit` vers le site de retrait. La réservation reste au statut `ReservationStatus::Pending` avec `copy` renseigné pendant toute la durée du voyage.
+  - Si aucun exemplaire n'est disponible sur le réseau : la réservation entre dans la file d'attente FIFO classique (`Pending` avec `copy IS NULL`).
+- **Raison** : un réseau de médiathèques sert justement à partager les collections sans bloquer inutilement les documents déjà en rayon.
 
-### Q3 — 2026-11-13 — Durée de mise de côté
-- **Décision** : 5 jours à partir de la mise de côté, paramètre configurable (`app.reservation_hold_days`). Passé ce délai, la réservation expire et l'exemplaire passe au suivant de la file.
-- **Raison** : un seul calcul de date, sans gérer l'arrivée physique de l'exemplaire en plus.
+### Q3 — 2026-11-13 — Durée de mise de côté et cycle d'expiration
+- **Décision** : 5 jours ouvrés à partir de la disponibilité physique sur le site de retrait, configurable via le paramètre `app.reservation_hold_days`.
+  - Si le document est rendu sur le site de retrait : il passe immédiatement à `Reserved` et la réservation à `Ready` avec `holdUntil = now + holdDays`.
+  - Si le document a voyagé depuis l'autre site : le délai de 5 jours commence **à l'arrivée physique** (`receiveTransit`), afin que le temps de transport ne pénalise pas l'adhérent.
+  - Passé ce délai (`holdUntil < now`), la réservation passe à `Expired` (via `expireOutdatedReservations()` ou la commande CLI `app:reservations:expire`) et l'exemplaire est réattribué à la réservation suivante dans la file FIFO (avec mise en transit si besoin), ou remis en rayon (`Available`).
+- **Raison** : équité pour l'adhérent (le voyage ne mange pas son délai de retrait) et fluidité de rotation des collections.
+
+### D-009 — 2026-11-14 — Sécurisation CSRF des actions adhérent
+- **Décision** : protection par jeton CSRF obligatoire sur les formulaires d'emprunt, de prolongation et de réservation.
+- **Raison** : empêcher toute falsification de requête inter-sites (CSRF) sur les opérations modifiant l'état de la circulation.
+
+### D-010 — 2026-11-14 — Forfaits de perte et dégradation configurables
+- **Décision** : tarification forfaitaire de 50,00 MAD (5 000 centimes) pour perte et 20,00 MAD (2 000 centimes) pour dégradation, configurables via `app.penalty_lost_cents` et `app.penalty_damaged_cents`. En cas de perte, l'exemplaire n'étant pas restitué, son site de rattachement n'est pas modifié.
+- **Raison** : éviter les montants en dur dans le code métier et garantir la cohérence géographique des exemplaires perdus.
+
+### D-011 — 2026-11-14 — Découplage strict des réservations en transit dans la file FIFO
+- **Décision** : `findNextPendingForEdition` filtre strictement les réservations avec `copy IS NULL` et départage par `id ASC`.
+- **Raison** : éviter qu'une réservation déjà en transit reçoive un deuxième exemplaire lors du retour d'un autre document de la même édition.
 
 ### Q4 — 2026-11-13 — Auteurs multiples, traducteurs, illustrateurs
 - **Décision** : table `Contributor` (la personne) et table de liaison `EditionContributor` portant un rôle (auteur, traducteur, illustrateur, réalisateur), unique par (édition, personne, rôle).

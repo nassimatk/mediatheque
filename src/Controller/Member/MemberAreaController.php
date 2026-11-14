@@ -11,6 +11,7 @@ use App\Repository\LoanRepository;
 use App\Repository\ReservationRepository;
 use App\Service\Circulation\LoanService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -45,7 +46,7 @@ class MemberAreaController extends AbstractController
     }
 
     #[Route('/espace-membre/prolonger/{id}', name: 'app_member_renew_loan', methods: ['POST'])]
-    public function renew(Loan $loan, LoanService $loanService): Response
+    public function renew(Loan $loan, Request $request, LoanService $loanService): Response
     {
         /** @var User $user */
         $user = $this->getUser();
@@ -53,6 +54,10 @@ class MemberAreaController extends AbstractController
 
         if ($loan->getMember() !== $member) {
             throw $this->createAccessDeniedException();
+        }
+
+        if (!$this->isCsrfTokenValid('renew_'.$loan->getId(), $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton CSRF invalide.');
         }
 
         try {

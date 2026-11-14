@@ -288,7 +288,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Inception (Édition Spéciale DVD)',
-                        'isbn' => '5051889045763',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'Warner Home Video',
                         'year' => 2010,
@@ -303,7 +303,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Interstellar (DVD)',
-                        'isbn' => '5051889476215',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'Paramount',
                         'year' => 2015,
@@ -318,7 +318,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Le Voyage de Chihiro (Studio Ghibli)',
-                        'isbn' => '3388330035037',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'Walt Disney Studios',
                         'year' => 2002,
@@ -333,7 +333,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Parasite (Palme d’Or 2019)',
-                        'isbn' => '3512392523293',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'The Jokers',
                         'year' => 2019,
@@ -421,7 +421,7 @@ class AppFixtures extends Fixture
                 $edition = (new Edition())
                     ->setWork($work)
                     ->setTitle($edTitle)
-                    ->setIsbn($faker->isbn13())
+                    ->setIsbn($type === EditionType::Dvd ? null : $faker->isbn13())
                     ->setType($type)
                     ->setPublisher($faker->randomElement($publishers[$type->value]))
                     ->setPublicationYear($faker->numberBetween(1990, 2025));
@@ -618,12 +618,12 @@ class AppFixtures extends Fixture
         // ==========================================
         // Cohérence métier : s'assurer que tous les exemplaires de l'édition 0 (Le Petit Prince)
         // sont empruntés, justifiant la file d'attente FIFO (décision Q2)
-        foreach ($allEditions[0]->getCopies() as $petitPrinceCopy) {
-            if ($petitPrinceCopy->getStatus() === CopyStatus::Available) {
-                $petitPrinceCopy->setStatus(CopyStatus::Borrowed);
+        foreach ($allCopies as $copyItem) {
+            if ($copyItem->getEdition() === $allEditions[0] && $copyItem->getStatus() === CopyStatus::Available) {
+                $copyItem->setStatus(CopyStatus::Borrowed);
                 $borrower = $faker->randomElement(array_slice($members, 5));
                 $loanPP = (new Loan())
-                    ->setCopy($petitPrinceCopy)
+                    ->setCopy($copyItem)
                     ->setMember($borrower)
                     ->setBorrowedAt($now->sub(new \DateInterval('P4D')))
                     ->setDueAt($now->add(new \DateInterval('P17D')))
@@ -672,9 +672,24 @@ class AppFixtures extends Fixture
                      ->setStatus(CopyStatus::InTransit)
                      ->setDestinationSite($siteCentre);
 
+            $transitEdition = $cTransit->getEdition();
+            foreach ($allCopies as $copyItem) {
+                if ($copyItem !== $cTransit && $copyItem->getEdition() === $transitEdition && $copyItem->getStatus() === CopyStatus::Available) {
+                    $copyItem->setStatus(CopyStatus::Borrowed);
+                    $borrower = $faker->randomElement(array_slice($members, 8));
+                    $loanTransit = (new Loan())
+                        ->setCopy($copyItem)
+                        ->setMember($borrower)
+                        ->setBorrowedAt($now->sub(new \DateInterval('P3D')))
+                        ->setDueAt($now->add(new \DateInterval('P18D')))
+                        ->setRenewalCount(0);
+                    $manager->persist($loanTransit);
+                }
+            }
+
             $res4 = (new Reservation())
                 ->setMember($members[3])
-                ->setEdition($cTransit->getEdition())
+                ->setEdition($transitEdition)
                 ->setPickupSite($siteCentre)
                 ->setCopy($cTransit)
                 ->setStatus(ReservationStatus::Pending)

@@ -30,6 +30,8 @@ class LoanService
         private readonly PenaltyRepository     $penaltyRepo,
         private readonly ReservationRepository $reservationRepo,
         private readonly int                   $reservationHoldDays = 5,
+        private readonly int                   $penaltyLostCents = 5000,
+        private readonly int                   $penaltyDamagedCents = 2000,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -159,11 +161,11 @@ class LoanService
 
     /**
      * Clôture un prêt, applique les pénalités de retard et gère la circulation :
-     *  - Met à jour le site physique de l'exemplaire selon $returnSite (circulation multi-sites).
+     *  - Met à jour le site physique de l'exemplaire selon $returnSite (sauf si l'exemplaire est perdu).
      *  - Si une réservation attend sur un AUTRE site : envoie l'exemplaire en transit vers ce site.
      *  - Si la réservation est sur le MÊME site : met l'exemplaire de côté (Reserved) avec holdUntil.
      *
-     * @param Site|null       $returnSite Site où l'adhérent dépose le document (si omis, conserve le site actuel).
+     * @param Site|null       $returnSite Site où l'adhérent dépose le document.
      * @param CopyStatus|null $newStatus  Available par défaut ; Damaged ou Lost si signalé.
      * @throws LoanException
      */
@@ -186,8 +188,8 @@ class LoanService
             // Clôture du prêt
             $loan->setClosedAt($now);
 
-            // Mise à jour du site de l'exemplaire (retour dans n'importe quel site du réseau)
-            if ($returnSite !== null) {
+            // Mise à jour du site de l'exemplaire (uniquement si le document a été physiquement retourné)
+            if ($copyStatus !== CopyStatus::Lost && $returnSite !== null) {
                 $copy->setSite($returnSite);
             }
 
@@ -198,9 +200,9 @@ class LoanService
 
             // Pénalités forfaitaires pour perte ou dégradation
             if ($copyStatus === CopyStatus::Lost) {
-                $this->applySpecialPenalty($loan, PenaltyType::Lost, 5000);
+                $this->applySpecialPenalty($loan, PenaltyType::Lost, $this->penaltyLostCents);
             } elseif ($copyStatus === CopyStatus::Damaged) {
-                $this->applySpecialPenalty($loan, PenaltyType::Damaged, 2000);
+                $this->applySpecialPenalty($loan, PenaltyType::Damaged, $this->penaltyDamagedCents);
             }
 
             // Circulation / Attribution à la réservation suivante
@@ -279,7 +281,7 @@ class LoanService
             $copy->setDestinationSite($pickupSite);
 
             $reservation->setCopy($copy);
-            // La réservation reste Pending jusqu'à l'arrivée physique sur le site de retrait
+            // La réservation reste Pending avec exemplaire en transit jusqu'à l'arrivée physique
         }
     }
 }

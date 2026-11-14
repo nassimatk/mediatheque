@@ -380,4 +380,88 @@ class LoanServiceTest extends TestCase
         $this->assertSame($copy, $reservation->getCopy());
         $this->assertSame(ReservationStatus::Pending, $reservation->getStatus(), 'Reste Pending tant qu\'il voyage');
     }
+
+    public function testReturnWithLostCopyDoesNotChangeSiteAndAppliesLostPenalty(): void
+    {
+        $siteInitial = new Site();
+        $siteAutre   = new Site();
+
+        $plan   = $this->makePlan();
+        $member = $this->makeMember($plan);
+        $copy   = $this->makeCopy(site: $siteInitial);
+        $loan   = $this->makeOpenLoan($member, $copy);
+
+        $capturedPenalty = null;
+        $this->em->expects($this->once())->method('persist')->willReturnCallback(function ($entity) use (&$capturedPenalty) {
+            $capturedPenalty = $entity;
+        });
+
+        $this->service->return($loan, returnSite: $siteAutre, newStatus: CopyStatus::Lost);
+
+        // L'exemplaire est perdu : son site d'origine ne doit pas avoir changé
+        $this->assertSame($siteInitial, $copy->getSite());
+        $this->assertSame(CopyStatus::Lost, $copy->getStatus());
+        $this->assertInstanceOf(\App\Entity\Penalty::class, $capturedPenalty);
+        $this->assertSame(\App\Enum\PenaltyType::Lost, $capturedPenalty->getType());
+        $this->assertSame(5000, $capturedPenalty->getAmountCents());
+    }
+
+    public function testReturnWithDamagedCopyAppliesDamagedPenalty(): void
+    {
+        $site = new Site();
+        $plan   = $this->makePlan();
+        $member = $this->makeMember($plan);
+        $copy   = $this->makeCopy(site: $site);
+        $loan   = $this->makeOpenLoan($member, $copy);
+
+        $capturedPenalty = null;
+        $this->em->expects($this->once())->method('persist')->willReturnCallback(function ($entity) use (&$capturedPenalty) {
+            $capturedPenalty = $entity;
+        });
+
+        $this->service->return($loan, returnSite: $site, newStatus: CopyStatus::Damaged);
+
+        $this->assertSame(CopyStatus::Damaged, $copy->getStatus());
+        $this->assertInstanceOf(\App\Entity\Penalty::class, $capturedPenalty);
+        $this->assertSame(\App\Enum\PenaltyType::Damaged, $capturedPenalty->getType());
+        $this->assertSame(2000, $capturedPenalty->getAmountCents());
+    }
+
+    public function testTwoConsecutiveReturnsServeTwoDistinctReservations(): void
+    {
+        $site = new Site();
+        $ref = new \ReflectionProperty(Site::class, 'id');
+        $ref->setValue($site, 1);
+
+        $plan     = $this->makePlan();
+        $member1  = $this->makeMember($plan, id: 1);
+        $member2  = $this->makeMember($plan, id: 2);
+        $edition  = new Edition();
+
+        $copy1 = $this->makeCopy(site: $site);
+        $copy1->setEdition($edition);
+        $copy2 = $this->makeCopy(site: $site);
+        $copy2->setEdition($edition);
+
+        $loan1 = $this->makeOpenLoan($member1, $copy1);
+        $loan2 = $this->makeOpenLoan($member2, $copy2);
+
+        $resA = (new Reservation())->setMember($member1)->setEdition($edition)->setPickupSite($site)->setStatus(ReservationStatus::Pending);
+        $resB = (new Reservation())->setMember($member2)->setEdition($edition)->setPickupSite($site)->setStatus(ReservationStatus::Pending);
+
+        // Simulation : premier appel renvoie resA (sans copy), deuxième appel renvoie resB (sans copy)
+        $this->reservationRepo->expects($this->exactly(2))
+            ->method('findNextPendingForEdition')
+            ->willReturnOnConsecutiveCalls($resA, $resB);
+
+        // Retour du premier exemplaire -> attribué à resA
+        $this->service->return($loan1, returnSite: $site);
+        $this->assertSame($copy1, $resA->getCopy());
+        $this->assertSame(ReservationStatus::Ready, $resA->getStatus());
+
+        // Retour du deuxième exemplaire -> doit être attribué à resB
+        $this->service->return($loan2, returnSite: $site);
+        $this->assertSame($copy2, $resB->getCopy());
+        $this->assertSame(ReservationStatus::Ready, $resB->getStatus());
+    }
 }

@@ -66,13 +66,19 @@ class ReservationService
             if ($otherAvailableCopy !== null) {
                 if ($otherAvailableCopy->getId() !== null) {
                     $this->em->lock($otherAvailableCopy, LockMode::PESSIMISTIC_WRITE);
+                    $this->em->refresh($otherAvailableCopy);
                 }
 
-                $otherAvailableCopy->setStatus(CopyStatus::InTransit);
-                $otherAvailableCopy->setDestinationSite($pickupSite);
+                if ($otherAvailableCopy->getStatus() === CopyStatus::Available) {
+                    $otherAvailableCopy->setStatus(CopyStatus::InTransit);
+                    $otherAvailableCopy->setDestinationSite($pickupSite);
 
-                $reservation->setCopy($otherAvailableCopy);
-                $reservation->setStatus(ReservationStatus::Pending); // En attente de voyage
+                    $reservation->setCopy($otherAvailableCopy);
+                    $reservation->setStatus(ReservationStatus::Pending); // En attente de voyage
+                } else {
+                    // Si l'exemplaire a été emprunté entre-temps par une autre requête
+                    $reservation->setStatus(ReservationStatus::Pending);
+                }
             } else {
                 // Règle 4 : Aucun exemplaire disponible nulle part => file d'attente FIFO
                 $reservation->setStatus(ReservationStatus::Pending);
@@ -148,18 +154,23 @@ class ReservationService
                 throw ReservationException::reservationNotActive();
             }
 
-            $copy = $reservation->getCopy();
-            $now  = new \DateTimeImmutable();
+            $copy    = $reservation->getCopy();
+            $edition = $reservation->getEdition();
+            $now     = new \DateTimeImmutable();
 
+            // 1. Marquer immédiatement la réservation comme annulée et détacher l'exemplaire
+            $reservation->setStatus(ReservationStatus::Cancelled);
+            $reservation->setCopy(null);
+            $this->em->flush();
+
+            // 2. Si un exemplaire lui était attribué, le réassigner au suivant ou le libérer
             if ($copy !== null) {
                 if ($copy->getId() !== null) {
                     $this->em->lock($copy, LockMode::PESSIMISTIC_WRITE);
+                    $this->em->refresh($copy);
                 }
 
-                $reservation->setCopy(null);
-
-                // Attribuer l'exemplaire au suivant dans la file FIFO ou le libérer
-                $next = $this->reservationRepo->findNextPendingForEdition($reservation->getEdition());
+                $next = $this->reservationRepo->findNextPendingForEdition($edition);
 
                 if ($next !== null) {
                     if ($copy->getSite() !== null && $next->getPickupSite()->getId() === $copy->getSite()->getId()) {
@@ -177,10 +188,9 @@ class ReservationService
                     $copy->setStatus(CopyStatus::Available);
                     $copy->setDestinationSite(null);
                 }
-            }
 
-            $reservation->setStatus(ReservationStatus::Cancelled);
-            $this->em->flush();
+                $this->em->flush();
+            }
         });
     }
 
@@ -198,7 +208,8 @@ class ReservationService
             $count       = 0;
 
             foreach ($outdated as $reservation) {
-                $copy = $reservation->getCopy();
+                $copy    = $reservation->getCopy();
+                $edition = $reservation->getEdition();
 
                 $reservation->setStatus(ReservationStatus::Expired);
                 $reservation->setCopy(null);
@@ -207,10 +218,11 @@ class ReservationService
                 if ($copy !== null) {
                     if ($copy->getId() !== null) {
                         $this->em->lock($copy, LockMode::PESSIMISTIC_WRITE);
+                        $this->em->refresh($copy);
                     }
 
                     // Transférer au suivant de la file FIFO si disponible
-                    $next = $this->reservationRepo->findNextPendingForEdition($reservation->getEdition());
+                    $next = $this->reservationRepo->findNextPendingForEdition($edition);
 
                     if ($next !== null) {
                         if ($copy->getSite() !== null && $next->getPickupSite()->getId() === $copy->getSite()->getId()) {
@@ -229,9 +241,10 @@ class ReservationService
                         $copy->setDestinationSite(null);
                     }
                 }
-            }
 
-            $this->em->flush();
+                // Flush à chaque itération pour éviter les doubles attributions en DQL dans la même boucle
+                $this->em->flush();
+            }
 
             return $count;
         });

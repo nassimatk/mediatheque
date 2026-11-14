@@ -236,4 +236,105 @@ class ReservationServiceTest extends TestCase
         $this->assertNull($resExpired->getCopy());
         $this->assertSame(CopyStatus::Available, $copy->getStatus(), 'L\'exemplaire doit repasser Available en rayon');
     }
+
+    // =========================================================================
+    // cancel()
+    // =========================================================================
+
+    public function testCancelReservationFreesCopy(): void
+    {
+        $siteCentre = $this->makeSite(1, 'Site Centre');
+        $member     = $this->makeMember(1);
+        $edition    = new Edition();
+
+        $copy = new Copy();
+        $copy->setEdition($edition)
+             ->setSite($siteCentre)
+             ->setStatus(CopyStatus::Reserved);
+
+        $reservation = new Reservation();
+        $reservation->setMember($member)
+                    ->setEdition($edition)
+                    ->setPickupSite($siteCentre)
+                    ->setCopy($copy)
+                    ->setStatus(ReservationStatus::Ready);
+
+        $this->reservationRepo->method('findNextPendingForEdition')->willReturn(null);
+        $this->em->expects($this->atLeastOnce())->method('flush');
+
+        $this->service->cancel($reservation);
+
+        $this->assertSame(ReservationStatus::Cancelled, $reservation->getStatus());
+        $this->assertNull($reservation->getCopy());
+        $this->assertSame(CopyStatus::Available, $copy->getStatus());
+    }
+
+    public function testCancelReservationReassignsCopyInTransitToNextPending(): void
+    {
+        $siteCentre = $this->makeSite(1, 'Site Centre');
+        $memberA    = $this->makeMember(1);
+        $memberB    = $this->makeMember(2);
+        $edition    = new Edition();
+
+        $copy = new Copy();
+        $copy->setEdition($edition)
+             ->setSite($siteCentre)
+             ->setStatus(CopyStatus::InTransit);
+
+        $resA = new Reservation();
+        $resA->setMember($memberA)
+             ->setEdition($edition)
+             ->setPickupSite($siteCentre)
+             ->setCopy($copy)
+             ->setStatus(ReservationStatus::Pending);
+
+        $resB = new Reservation();
+        $resB->setMember($memberB)
+             ->setEdition($edition)
+             ->setPickupSite($siteCentre)
+             ->setStatus(ReservationStatus::Pending);
+
+        // Quand resA est annulée, findNextPendingForEdition trouve resB
+        $this->reservationRepo->method('findNextPendingForEdition')->willReturn($resB);
+        $this->em->expects($this->atLeastOnce())->method('flush');
+
+        $this->service->cancel($resA);
+
+        $this->assertSame(ReservationStatus::Cancelled, $resA->getStatus());
+        $this->assertNull($resA->getCopy());
+        $this->assertSame(ReservationStatus::Ready, $resB->getStatus());
+        $this->assertSame($copy, $resB->getCopy());
+        $this->assertSame(CopyStatus::Reserved, $copy->getStatus());
+    }
+
+    public function testExpireMultipleOutdatedReservationsDoesNotDoubleAssign(): void
+    {
+        $siteCentre = $this->makeSite(1, 'Site Centre');
+        $edition    = new Edition();
+        $memberA    = $this->makeMember(1);
+        $memberB    = $this->makeMember(2);
+        $memberC    = $this->makeMember(3);
+        $memberD    = $this->makeMember(4);
+
+        $copy1 = (new Copy())->setEdition($edition)->setSite($siteCentre)->setStatus(CopyStatus::Reserved);
+        $copy2 = (new Copy())->setEdition($edition)->setSite($siteCentre)->setStatus(CopyStatus::Reserved);
+
+        $resExp1 = (new Reservation())->setMember($memberA)->setEdition($edition)->setPickupSite($siteCentre)->setCopy($copy1)->setStatus(ReservationStatus::Ready)->setHoldUntil(new \DateTimeImmutable('-1 day'));
+        $resExp2 = (new Reservation())->setMember($memberB)->setEdition($edition)->setPickupSite($siteCentre)->setCopy($copy2)->setStatus(ReservationStatus::Ready)->setHoldUntil(new \DateTimeImmutable('-1 day'));
+
+        $next1 = (new Reservation())->setMember($memberC)->setEdition($edition)->setPickupSite($siteCentre)->setStatus(ReservationStatus::Pending);
+        $next2 = (new Reservation())->setMember($memberD)->setEdition($edition)->setPickupSite($siteCentre)->setStatus(ReservationStatus::Pending);
+
+        $this->reservationRepo->method('findOutdatedReadyReservations')->willReturn([$resExp1, $resExp2]);
+        $this->reservationRepo->expects($this->exactly(2))
+            ->method('findNextPendingForEdition')
+            ->willReturnOnConsecutiveCalls($next1, $next2);
+
+        $count = $this->service->expireOutdatedReservations(new \DateTimeImmutable());
+
+        $this->assertSame(2, $count);
+        $this->assertSame($copy1, $next1->getCopy());
+        $this->assertSame($copy2, $next2->getCopy());
+        $this->assertNotSame($next1->getCopy(), $next2->getCopy(), 'Chaque réservation en attente reçoit un exemplaire distinct');
+    }
 }

@@ -50,6 +50,7 @@
                 Vous pouvez réserver ce document pour le retirer dans la médiathèque de votre choix. Si l'exemplaire se trouve dans l'autre médiathèque, un transfert sera automatiquement déclenché.
             </p>
             <form method="post" action="{{ path('app_catalog_reserve', {id: edition.id}) }}" class="row g-3 align-items-end">
+                <input type="hidden" name="_token" value="{{ csrf_token('reserve_' ~ edition.id) }}">
                 <div class="col-md-6">
                     <label for="pickupSite" class="form-label fw-bold">Médiathèque de retrait souhaitée :</label>
                     <select id="pickupSite" name="site_id" class="form-select" required>

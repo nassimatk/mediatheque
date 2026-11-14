@@ -60,6 +60,7 @@
                         <td class="text-end">
                             {% if loan.renewalCount < member.plan.maxRenewals and not isLate %}
                                 <form method="post" action="{{ path('app_member_renew_loan', {id: loan.id}) }}" class="d-inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('renew_' ~ loan.id) }}">
                                     <button class="btn btn-sm btn-outline-primary" type="submit">
                                         <i class="bi bi-arrow-clockwise me-1"></i>Prolonger
                                     </button>

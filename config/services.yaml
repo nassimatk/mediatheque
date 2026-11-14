@@ -8,6 +8,8 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     app.reservation_hold_days: 5
+    app.penalty_lost_cents: 5000
+    app.penalty_damaged_cents: 2000
 
 services:
     # default configuration for services in *this* file
@@ -16,6 +18,8 @@ services:
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
         bind:
             int $reservationHoldDays: '%app.reservation_hold_days%'
+            int $penaltyLostCents: '%app.penalty_lost_cents%'
+            int $penaltyDamagedCents: '%app.penalty_damaged_cents%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name

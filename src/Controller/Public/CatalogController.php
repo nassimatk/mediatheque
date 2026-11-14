@@ -82,6 +82,10 @@ class CatalogController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
+        if (!$this->isCsrfTokenValid('reserve_'.$edition->getId(), $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+        }
+
         /** @var User $user */
         $user = $this->getUser();
         $member = $user->getMember();
