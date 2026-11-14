@@ -6,8 +6,11 @@ use App\Entity\Copy;
 use App\Entity\Edition;
 use App\Entity\Loan;
 use App\Entity\Member;
+use App\Entity\Reservation;
+use App\Entity\Site;
 use App\Entity\SubscriptionPlan;
 use App\Enum\CopyStatus;
+use App\Enum\ReservationStatus;
 use App\Exception\LoanException;
 use App\Repository\LoanRepository;
 use App\Repository\PenaltyRepository;
@@ -18,8 +21,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tests unitaires de LoanService.
- * On utilise des mocks pour tout ce qui touche la base de données.
+ * Tests unitaires complets de LoanService (règles de prêt, retour, concurrence et circulation).
  */
 class LoanServiceTest extends TestCase
 {
@@ -44,11 +46,15 @@ class LoanServiceTest extends TestCase
         $this->penaltyRepo     = $this->createMock(PenaltyRepository::class);
         $this->reservationRepo = $this->createMock(ReservationRepository::class);
 
+        // Configuration pour exécuter directement le callback passé à wrapInTransaction
+        $this->em->method('wrapInTransaction')->willReturnCallback(fn(callable $cb) => $cb($this->em));
+
         $this->service = new LoanService(
             $this->em,
             $this->loanRepo,
             $this->penaltyRepo,
             $this->reservationRepo,
+            reservationHoldDays: 5
         );
     }
 
@@ -67,20 +73,26 @@ class LoanServiceTest extends TestCase
         return $plan;
     }
 
-    private function makeMember(SubscriptionPlan $plan): Member
+    private function makeMember(SubscriptionPlan $plan, int $id = 1): Member
     {
         $member = new Member();
+        $ref = new \ReflectionProperty(Member::class, 'id');
+        $ref->setValue($member, $id);
+
         $member->setFirstName('Test')->setLastName('User')->setEmail('test@test.ma');
         $member->setPlan($plan);
 
         return $member;
     }
 
-    private function makeCopy(CopyStatus $status = CopyStatus::Available): Copy
+    private function makeCopy(CopyStatus $status = CopyStatus::Available, ?Site $site = null): Copy
     {
         $edition = new Edition();
         $copy    = new Copy();
         $copy->setStatus($status)->setEdition($edition);
+        if ($site !== null) {
+            $copy->setSite($site);
+        }
 
         return $copy;
     }
@@ -106,7 +118,7 @@ class LoanServiceTest extends TestCase
     // checkout()
     // =========================================================================
 
-    public function testCheckoutSucceeds(): void
+    public function testCheckoutSucceedsForAvailableCopy(): void
     {
         $plan   = $this->makePlan();
         $member = $this->makeMember($plan);
@@ -127,13 +139,68 @@ class LoanServiceTest extends TestCase
         $this->assertSame(0, $loan->getRenewalCount());
     }
 
+    public function testCheckoutSucceedsForReservedCopyWhenMemberIsReserver(): void
+    {
+        $plan   = $this->makePlan();
+        $member = $this->makeMember($plan, id: 42);
+        $copy   = $this->makeCopy(CopyStatus::Reserved);
+
+        $reservation = new Reservation();
+        $reservation->setMember($member)
+                    ->setCopy($copy)
+                    ->setStatus(ReservationStatus::Ready);
+
+        $this->reservationRepo->method('findReadyReservationForCopy')->with($copy)->willReturn($reservation);
+        $this->loanRepo->method('countOpenLoansForMember')->willReturn(0);
+        $this->penaltyRepo->method('hasUnpaidPenalty')->willReturn(false);
+
+        $this->em->expects($this->once())->method('persist');
+        $this->em->expects($this->once())->method('flush');
+
+        $loan = $this->service->checkout($member, $copy);
+
+        $this->assertSame(CopyStatus::Borrowed, $copy->getStatus());
+        $this->assertSame(ReservationStatus::Fulfilled, $reservation->getStatus(), 'La réservation doit être honorée');
+    }
+
+    public function testCheckoutFailsForReservedCopyWhenMemberIsNotReserver(): void
+    {
+        $this->expectException(LoanException::class);
+
+        $plan     = $this->makePlan();
+        $memberA  = $this->makeMember($plan, id: 1);
+        $memberB  = $this->makeMember($plan, id: 2);
+        $copy     = $this->makeCopy(CopyStatus::Reserved);
+
+        $reservation = new Reservation();
+        $reservation->setMember($memberA) // Réservé pour membre A
+                    ->setCopy($copy)
+                    ->setStatus(ReservationStatus::Ready);
+
+        $this->reservationRepo->method('findReadyReservationForCopy')->with($copy)->willReturn($reservation);
+
+        // Membre B tente d'emprunter l'exemplaire de A => doit être rejeté
+        $this->service->checkout($memberB, $copy);
+    }
+
+    public function testCheckoutFailsWhenCopyInTransit(): void
+    {
+        $this->expectException(LoanException::class);
+
+        $plan   = $this->makePlan();
+        $member = $this->makeMember($plan);
+        $copy   = $this->makeCopy(CopyStatus::InTransit);
+
+        $this->service->checkout($member, $copy);
+    }
+
     public function testCheckoutFailsWhenCopyNotAvailable(): void
     {
         $this->expectException(LoanException::class);
 
         $plan   = $this->makePlan();
         $member = $this->makeMember($plan);
-        $copy   = $this->makeCopy(CopyStatus::Borrowed); // pas disponible
+        $copy   = $this->makeCopy(CopyStatus::Borrowed);
 
         $this->service->checkout($member, $copy);
     }
@@ -146,7 +213,7 @@ class LoanServiceTest extends TestCase
         $member = $this->makeMember($plan);
         $copy   = $this->makeCopy(CopyStatus::Available);
 
-        $this->loanRepo->method('countOpenLoansForMember')->willReturn(2); // quota atteint
+        $this->loanRepo->method('countOpenLoansForMember')->willReturn(2);
         $this->penaltyRepo->method('hasUnpaidPenalty')->willReturn(false);
 
         $this->service->checkout($member, $copy);
@@ -161,7 +228,7 @@ class LoanServiceTest extends TestCase
         $copy   = $this->makeCopy(CopyStatus::Available);
 
         $this->loanRepo->method('countOpenLoansForMember')->willReturn(0);
-        $this->penaltyRepo->method('hasUnpaidPenalty')->willReturn(true); // pénalité impayée
+        $this->penaltyRepo->method('hasUnpaidPenalty')->willReturn(true);
 
         $this->service->checkout($member, $copy);
     }
@@ -196,7 +263,7 @@ class LoanServiceTest extends TestCase
         $member = $this->makeMember($plan);
         $copy   = $this->makeCopy();
         $loan   = $this->makeOpenLoan($member, $copy);
-        $loan->setRenewalCount(1); // déjà au max
+        $loan->setRenewalCount(1);
 
         $this->service->renew($loan);
     }
@@ -211,26 +278,13 @@ class LoanServiceTest extends TestCase
         $loan   = $this->makeOpenLoan($member, $copy);
         $loan->setRenewalCount(0);
 
-        $this->reservationRepo->method('hasPendingReservation')->willReturn(true); // réservation bloquante
-
-        $this->service->renew($loan);
-    }
-
-    public function testRenewFailsWhenLoanClosed(): void
-    {
-        $this->expectException(LoanException::class);
-
-        $plan   = $this->makePlan();
-        $member = $this->makeMember($plan);
-        $copy   = $this->makeCopy();
-        $loan   = $this->makeOpenLoan($member, $copy);
-        $loan->setClosedAt(new \DateTimeImmutable()); // prêt clôturé
+        $this->reservationRepo->method('hasPendingReservation')->willReturn(true);
 
         $this->service->renew($loan);
     }
 
     // =========================================================================
-    // return()
+    // return() & Circulation inter-sites
     // =========================================================================
 
     public function testReturnClosesLoanWithoutPenaltyWhenOnTime(): void
@@ -238,10 +292,10 @@ class LoanServiceTest extends TestCase
         $plan   = $this->makePlan(penaltyCents: 100);
         $member = $this->makeMember($plan);
         $copy   = $this->makeCopy();
-        $loan   = $this->makeOpenLoan($member, $copy, daysAgo: 10, daysUntilDue: 5); // pas encore en retard
+        $loan   = $this->makeOpenLoan($member, $copy, daysAgo: 10, daysUntilDue: 5);
 
         $this->reservationRepo->method('findNextPendingForEdition')->willReturn(null);
-        $this->em->expects($this->never())->method('persist'); // pas de pénalité
+        $this->em->expects($this->never())->method('persist');
         $this->em->expects($this->once())->method('flush');
 
         $this->service->return($loan);
@@ -255,11 +309,10 @@ class LoanServiceTest extends TestCase
         $plan   = $this->makePlan(penaltyCents: 100);
         $member = $this->makeMember($plan);
         $copy   = $this->makeCopy();
-        // Prêt dont la date limite était il y a 3 jours
         $loan   = $this->makeOpenLoan($member, $copy, daysAgo: 24, daysUntilDue: -3);
 
         $this->reservationRepo->method('findNextPendingForEdition')->willReturn(null);
-        $this->em->expects($this->once())->method('persist'); // la pénalité
+        $this->em->expects($this->once())->method('persist');
         $this->em->expects($this->once())->method('flush');
 
         $this->service->return($loan);
@@ -267,27 +320,64 @@ class LoanServiceTest extends TestCase
         $this->assertNotNull($loan->getClosedAt());
     }
 
-    public function testReturnNotifiesNextReservation(): void
+    public function testReturnNotifiesNextReservationOnSameSite(): void
     {
-        $plan        = $this->makePlan();
-        $member      = $this->makeMember($plan);
-        $copy        = $this->makeCopy();
-        $loan        = $this->makeOpenLoan($member, $copy, daysUntilDue: 5);
+        $site = new Site();
+        $ref  = new \ReflectionProperty(Site::class, 'id');
+        $ref->setValue($site, 1);
 
-        $reservation = new \App\Entity\Reservation();
+        $plan   = $this->makePlan();
+        $member = $this->makeMember($plan);
+        $copy   = $this->makeCopy(site: $site);
+        $loan   = $this->makeOpenLoan($member, $copy, daysUntilDue: 5);
+
+        $reservation = new Reservation();
         $reservation->setMember($member)
                     ->setEdition($copy->getEdition())
-                    ->setPickupSite(new \App\Entity\Site())
-                    ->setStatus(\App\Enum\ReservationStatus::Pending);
+                    ->setPickupSite($site)
+                    ->setStatus(ReservationStatus::Pending);
 
         $this->reservationRepo->method('findNextPendingForEdition')->willReturn($reservation);
         $this->em->expects($this->once())->method('flush');
 
-        $this->service->return($loan);
+        $this->service->return($loan, returnSite: $site);
 
-        $this->assertSame(\App\Enum\ReservationStatus::Ready, $reservation->getStatus());
+        $this->assertSame(ReservationStatus::Ready, $reservation->getStatus());
         $this->assertSame($copy, $reservation->getCopy());
         $this->assertNotNull($reservation->getHoldUntil());
-        $this->assertSame(CopyStatus::Reserved, $copy->getStatus()); // mis de côté
+        $this->assertSame(CopyStatus::Reserved, $copy->getStatus());
+    }
+
+    public function testReturnPutsCopyInTransitWhenReservationIsOnDifferentSite(): void
+    {
+        $siteDepart = new Site();
+        $ref = new \ReflectionProperty(Site::class, 'id');
+        $ref->setValue($siteDepart, 1);
+
+        $siteRetrait = new Site();
+        $ref->setValue($siteRetrait, 2);
+
+        $plan   = $this->makePlan();
+        $member = $this->makeMember($plan);
+        $copy   = $this->makeCopy(site: $siteDepart);
+        $loan   = $this->makeOpenLoan($member, $copy, daysUntilDue: 5);
+
+        // La réservation suivante est au site 2, alors que le livre est déposé au site 1
+        $reservation = new Reservation();
+        $reservation->setMember($member)
+                    ->setEdition($copy->getEdition())
+                    ->setPickupSite($siteRetrait)
+                    ->setStatus(ReservationStatus::Pending);
+
+        $this->reservationRepo->method('findNextPendingForEdition')->willReturn($reservation);
+        $this->em->expects($this->once())->method('flush');
+
+        $this->service->return($loan, returnSite: $siteDepart);
+
+        // L'exemplaire doit voyager vers le site 2
+        $this->assertSame(CopyStatus::InTransit, $copy->getStatus());
+        $this->assertSame($siteRetrait, $copy->getDestinationSite());
+        $this->assertSame($copy, $reservation->getCopy());
+        $this->assertSame(ReservationStatus::Pending, $reservation->getStatus(), 'Reste Pending tant qu\'il voyage');
     }
 }

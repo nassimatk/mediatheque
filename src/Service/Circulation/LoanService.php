@@ -6,6 +6,7 @@ use App\Entity\Copy;
 use App\Entity\Loan;
 use App\Entity\Member;
 use App\Entity\Penalty;
+use App\Entity\Site;
 use App\Enum\CopyStatus;
 use App\Enum\PenaltyType;
 use App\Enum\ReservationStatus;
@@ -13,13 +14,13 @@ use App\Exception\LoanException;
 use App\Repository\LoanRepository;
 use App\Repository\PenaltyRepository;
 use App\Repository\ReservationRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Service de gestion des prêts.
+ * Service de gestion des prêts et retours.
  *
- * Toutes les règles métier de circulation se trouvent ici,
- * jamais dans les contrôleurs ni dans les entités.
+ * Toutes les règles métier de circulation et de concurrence se trouvent ici.
  */
 class LoanService
 {
@@ -28,61 +29,89 @@ class LoanService
         private readonly LoanRepository        $loanRepo,
         private readonly PenaltyRepository     $penaltyRepo,
         private readonly ReservationRepository $reservationRepo,
+        private readonly int                   $reservationHoldDays = 5,
     ) {}
 
     // -------------------------------------------------------------------------
-    // Emprunter
+    // Emprunter (Checkout)
     // -------------------------------------------------------------------------
 
     /**
-     * Crée un prêt pour $member sur $copy.
+     * Crée un prêt pour $member sur $copy dans une transaction avec verrou pessimiste.
      *
      * Règles vérifiées :
-     *  1. L'exemplaire doit être Available.
-     *  2. L'adhérent ne doit pas avoir atteint son quota de prêts ouverts.
-     *  3. L'adhérent ne doit pas avoir de pénalité impayée.
+     *  1. Verrouillage pessimiste de la ligne Copy en base.
+     *  2. L'exemplaire ne doit pas être en transit, perdu ou abîmé.
+     *  3. Si l'exemplaire est réservé (Reserved), l'emprunt n'est autorisé que pour le membre réservant.
+     *     La réservation passe alors à "Fulfilled" (honorée).
+     *  4. L'adhérent ne doit pas avoir atteint son quota de prêts ouverts.
+     *  5. L'adhérent ne doit pas avoir de pénalité impayée.
      *
      * @throws LoanException
      */
     public function checkout(Member $member, Copy $copy): Loan
     {
-        // 1. Exemplaire disponible ?
-        if ($copy->getStatus() !== CopyStatus::Available) {
-            throw LoanException::copyNotAvailable();
-        }
+        return $this->em->wrapInTransaction(function () use ($member, $copy): Loan {
+            // Verrouillage pessimiste pour éviter les emprunts simultanés
+            if ($copy->getId() !== null) {
+                $this->em->lock($copy, LockMode::PESSIMISTIC_WRITE);
+                $this->em->refresh($copy);
+            }
 
-        $plan = $member->getPlan();
+            // 1. Vérification du statut de l'exemplaire
+            if ($copy->getStatus() === CopyStatus::InTransit) {
+                throw LoanException::copyInTransit();
+            }
 
-        // 2. Quota de prêts simultanés
-        $openLoans = $this->loanRepo->countOpenLoansForMember($member);
-        if ($openLoans >= $plan->getMaxLoans()) {
-            throw LoanException::quotaReached($plan->getMaxLoans());
-        }
+            $reservationToFulfill = null;
+            if ($copy->getStatus() === CopyStatus::Reserved) {
+                $reservation = $this->reservationRepo->findReadyReservationForCopy($copy);
+                if ($reservation === null || $reservation->getMember()->getId() !== $member->getId()) {
+                    throw LoanException::copyReservedForAnotherMember();
+                }
+                $reservationToFulfill = $reservation;
+            } elseif ($copy->getStatus() !== CopyStatus::Available) {
+                throw LoanException::copyNotAvailable();
+            }
 
-        // 3. Pénalité impayée bloquante
-        if ($this->penaltyRepo->hasUnpaidPenalty($member)) {
-            throw LoanException::unpaidPenalty();
-        }
+            $plan = $member->getPlan();
 
-        // Création du prêt
-        $now  = new \DateTimeImmutable();
-        $loan = new Loan();
-        $loan->setMember($member)
-             ->setCopy($copy)
-             ->setBorrowedAt($now)
-             ->setDueAt($now->modify(sprintf('+%d days', $plan->getLoanDays())))
-             ->setRenewalCount(0);
+            // 2. Quota de prêts simultanés
+            $openLoans = $this->loanRepo->countOpenLoansForMember($member);
+            if ($openLoans >= $plan->getMaxLoans()) {
+                throw LoanException::quotaReached($plan->getMaxLoans());
+            }
 
-        $copy->setStatus(CopyStatus::Borrowed);
+            // 3. Pénalité impayée bloquante
+            if ($this->penaltyRepo->hasUnpaidPenalty($member)) {
+                throw LoanException::unpaidPenalty();
+            }
 
-        $this->em->persist($loan);
-        $this->em->flush();
+            // 4. Création du prêt
+            $now  = new \DateTimeImmutable();
+            $loan = new Loan();
+            $loan->setMember($member)
+                 ->setCopy($copy)
+                 ->setBorrowedAt($now)
+                 ->setDueAt($now->modify(sprintf('+%d days', $plan->getLoanDays())))
+                 ->setRenewalCount(0);
 
-        return $loan;
+            $copy->setStatus(CopyStatus::Borrowed);
+
+            // Si l'emprunt honore une réservation mise de côté, on clôture la réservation
+            if ($reservationToFulfill !== null) {
+                $reservationToFulfill->setStatus(ReservationStatus::Fulfilled);
+            }
+
+            $this->em->persist($loan);
+            $this->em->flush();
+
+            return $loan;
+        });
     }
 
     // -------------------------------------------------------------------------
-    // Prolonger
+    // Prolonger (Renew)
     // -------------------------------------------------------------------------
 
     /**
@@ -97,81 +126,93 @@ class LoanService
      */
     public function renew(Loan $loan): Loan
     {
-        // 1. Prêt ouvert ?
-        if (!$loan->isOpen()) {
-            throw LoanException::loanAlreadyClosed();
-        }
+        return $this->em->wrapInTransaction(function () use ($loan): Loan {
+            if (!$loan->isOpen()) {
+                throw LoanException::loanAlreadyClosed();
+            }
 
-        $plan = $loan->getMember()->getPlan();
+            $plan = $loan->getMember()->getPlan();
 
-        // 2. Renouvellements restants ?
-        if ($loan->getRenewalCount() >= $plan->getMaxRenewals()) {
-            throw LoanException::maxRenewalsReached($plan->getMaxRenewals());
-        }
+            if ($loan->getRenewalCount() >= $plan->getMaxRenewals()) {
+                throw LoanException::maxRenewalsReached($plan->getMaxRenewals());
+            }
 
-        // 3. Réservation en attente sur cette édition ?
-        $edition = $loan->getCopy()->getEdition();
-        if ($this->reservationRepo->hasPendingReservation($edition)) {
-            throw LoanException::reservationExists();
-        }
+            $edition = $loan->getCopy()->getEdition();
+            if ($this->reservationRepo->hasPendingReservation($edition)) {
+                throw LoanException::reservationExists();
+            }
 
-        $loan->setDueAt(
-            $loan->getDueAt()->modify(sprintf('+%d days', $plan->getLoanDays()))
-        );
-        $loan->setRenewalCount($loan->getRenewalCount() + 1);
+            $loan->setDueAt(
+                $loan->getDueAt()->modify(sprintf('+%d days', $plan->getLoanDays()))
+            );
+            $loan->setRenewalCount($loan->getRenewalCount() + 1);
 
-        $this->em->flush();
+            $this->em->flush();
 
-        return $loan;
+            return $loan;
+        });
     }
 
     // -------------------------------------------------------------------------
-    // Retourner
+    // Retourner (Return)
     // -------------------------------------------------------------------------
 
     /**
-     * Clôture un prêt et applique les règles post-retour :
-     *  - Calcule une pénalité si le retour est en retard.
-     *  - Notifie la prochaine réservation FIFO (Ready + holdUntil +5j).
-     *  - Met à jour le statut de l'exemplaire.
+     * Clôture un prêt, applique les pénalités de retard et gère la circulation :
+     *  - Met à jour le site physique de l'exemplaire selon $returnSite (circulation multi-sites).
+     *  - Si une réservation attend sur un AUTRE site : envoie l'exemplaire en transit vers ce site.
+     *  - Si la réservation est sur le MÊME site : met l'exemplaire de côté (Reserved) avec holdUntil.
      *
+     * @param Site|null       $returnSite Site où l'adhérent dépose le document (si omis, conserve le site actuel).
      * @param CopyStatus|null $newStatus  Available par défaut ; Damaged ou Lost si signalé.
      * @throws LoanException
      */
-    public function return(Loan $loan, ?CopyStatus $newStatus = null): void
+    public function return(Loan $loan, ?Site $returnSite = null, ?CopyStatus $newStatus = null): void
     {
-        if (!$loan->isOpen()) {
-            throw LoanException::loanAlreadyClosed();
-        }
+        $this->em->wrapInTransaction(function () use ($loan, $returnSite, $newStatus): void {
+            if (!$loan->isOpen()) {
+                throw LoanException::loanAlreadyClosed();
+            }
 
-        $now       = new \DateTimeImmutable();
-        $copyStatus = $newStatus ?? CopyStatus::Available;
+            $now        = new \DateTimeImmutable();
+            $copyStatus = $newStatus ?? CopyStatus::Available;
+            $copy       = $loan->getCopy();
 
-        // Clôture du prêt
-        $loan->setClosedAt($now);
+            if ($copy->getId() !== null) {
+                $this->em->lock($copy, LockMode::PESSIMISTIC_WRITE);
+                $this->em->refresh($copy);
+            }
 
-        // Pénalité de retard
-        if ($loan->getDueAt() < $now && $copyStatus !== CopyStatus::Lost) {
-            $this->applyLatePenalty($loan, $now);
-        }
+            // Clôture du prêt
+            $loan->setClosedAt($now);
 
-        // Pénalité perte / dégât (montant forfaitaire fixe : 5 000 centimes)
-        if ($copyStatus === CopyStatus::Lost) {
-            $this->applySpecialPenalty($loan, PenaltyType::Lost, 5000);
-        } elseif ($copyStatus === CopyStatus::Damaged) {
-            $this->applySpecialPenalty($loan, PenaltyType::Damaged, 2000);
-        }
+            // Mise à jour du site de l'exemplaire (retour dans n'importe quel site du réseau)
+            if ($returnSite !== null) {
+                $copy->setSite($returnSite);
+            }
 
-        // Mise à jour de l'exemplaire
-        $copy = $loan->getCopy();
-        $copy->setStatus($copyStatus);
+            // Pénalité de retard
+            if ($loan->getDueAt() < $now && $copyStatus !== CopyStatus::Lost) {
+                $this->applyLatePenalty($loan, $now);
+            }
 
-        // Notification de la prochaine réservation FIFO (uniquement si exemplaire toujours physique)
-        if ($copyStatus === CopyStatus::Available) {
-            $this->notifyNextReservation($copy, $now);
-        }
+            // Pénalités forfaitaires pour perte ou dégradation
+            if ($copyStatus === CopyStatus::Lost) {
+                $this->applySpecialPenalty($loan, PenaltyType::Lost, 5000);
+            } elseif ($copyStatus === CopyStatus::Damaged) {
+                $this->applySpecialPenalty($loan, PenaltyType::Damaged, 2000);
+            }
 
-        $this->em->flush();
+            // Circulation / Attribution à la réservation suivante
+            if ($copyStatus === CopyStatus::Available) {
+                $this->dispatchNextReservation($copy, $now);
+            } else {
+                $copy->setStatus($copyStatus);
+                $copy->setDestinationSite(null);
+            }
+
+            $this->em->flush();
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -206,20 +247,39 @@ class LoanService
         $this->em->persist($penalty);
     }
 
-    private function notifyNextReservation(Copy $copy, \DateTimeImmutable $now): void
+    /**
+     * Attribue l'exemplaire à la réservation suivante ou le remet en rayon.
+     * Gère le transit inter-sites si le site de retrait diffère du site actuel.
+     */
+    private function dispatchNextReservation(Copy $copy, \DateTimeImmutable $now): void
     {
         $edition     = $copy->getEdition();
         $reservation = $this->reservationRepo->findNextPendingForEdition($edition);
 
         if ($reservation === null) {
+            $copy->setStatus(CopyStatus::Available);
+            $copy->setDestinationSite(null);
             return;
         }
 
-        $reservation->setStatus(ReservationStatus::Ready)
-                    ->setCopy($copy)
-                    ->setHoldUntil($now->modify('+5 days'));
+        $pickupSite  = $reservation->getPickupSite();
+        $currentSite = $copy->getSite();
 
-        // L'exemplaire est désormais mis de côté
-        $copy->setStatus(CopyStatus::Reserved);
+        if ($currentSite !== null && $pickupSite->getId() === $currentSite->getId()) {
+            // Même site : l'exemplaire est immédiatement mis de côté pour l'adhérent
+            $reservation->setStatus(ReservationStatus::Ready)
+                        ->setCopy($copy)
+                        ->setHoldUntil($now->modify(sprintf('+%d days', $this->reservationHoldDays)));
+
+            $copy->setStatus(CopyStatus::Reserved);
+            $copy->setDestinationSite(null);
+        } else {
+            // Sites différents : l'exemplaire part en transit vers le site de retrait
+            $copy->setStatus(CopyStatus::InTransit);
+            $copy->setDestinationSite($pickupSite);
+
+            $reservation->setCopy($copy);
+            // La réservation reste Pending jusqu'à l'arrivée physique sur le site de retrait
+        }
     }
 }

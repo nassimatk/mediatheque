@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Copy;
 use App\Entity\Edition;
 use App\Entity\Member;
 use App\Entity\Reservation;
@@ -69,5 +70,52 @@ class ReservationRepository extends ServiceEntityRepository
             ->setParameter('statuses', [ReservationStatus::Pending, ReservationStatus::Ready])
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * Réservation "Ready" actuellement attribuée à un exemplaire précis.
+     * Utilisé lors du checkout pour vérifier que c'est bien l'adhérent réservant qui emprunte.
+     */
+    public function findReadyReservationForCopy(Copy $copy): ?Reservation
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.copy = :copy')
+            ->andWhere('r.status = :status')
+            ->setParameter('copy', $copy)
+            ->setParameter('status', ReservationStatus::Ready)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Réservation active (Pending ou Ready) associée à un exemplaire (notamment en transit ou mis de côté).
+     */
+    public function findActiveReservationForCopy(Copy $copy): ?Reservation
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.copy = :copy')
+            ->andWhere('r.status IN (:statuses)')
+            ->setParameter('copy', $copy)
+            ->setParameter('statuses', [ReservationStatus::Pending, ReservationStatus::Ready])
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Liste des réservations prêtes dont la date limite de retrait est dépassée.
+     * Utilisé par le service et la commande d'expiration.
+     *
+     * @return Reservation[]
+     */
+    public function findOutdatedReadyReservations(\DateTimeImmutable $now): array
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.status = :status')
+            ->andWhere('r.holdUntil IS NOT NULL')
+            ->andWhere('r.holdUntil < :now')
+            ->setParameter('status', ReservationStatus::Ready)
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
     }
 }

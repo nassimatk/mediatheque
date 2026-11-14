@@ -616,6 +616,22 @@ class AppFixtures extends Fixture
         // ==========================================
         // 6. RÉSERVATIONS
         // ==========================================
+        // Cohérence métier : s'assurer que tous les exemplaires de l'édition 0 (Le Petit Prince)
+        // sont empruntés, justifiant la file d'attente FIFO (décision Q2)
+        foreach ($allEditions[0]->getCopies() as $petitPrinceCopy) {
+            if ($petitPrinceCopy->getStatus() === CopyStatus::Available) {
+                $petitPrinceCopy->setStatus(CopyStatus::Borrowed);
+                $borrower = $faker->randomElement(array_slice($members, 5));
+                $loanPP = (new Loan())
+                    ->setCopy($petitPrinceCopy)
+                    ->setMember($borrower)
+                    ->setBorrowedAt($now->sub(new \DateInterval('P4D')))
+                    ->setDueAt($now->add(new \DateInterval('P17D')))
+                    ->setRenewalCount(0);
+                $manager->persist($loanPP);
+            }
+        }
+
         // Réservation 1 : Petit Prince - En attente (Pending) par Member 1 au site Al Amal
         $res1 = (new Reservation())
             ->setMember($members[0])
@@ -647,6 +663,23 @@ class AppFixtures extends Fixture
                 ->setCreatedAt($now->sub(new \DateInterval('P2D')))
                 ->setHoldUntil($now->add(new \DateInterval('P3D'))); // Valable encore 3 jours
             $manager->persist($res3);
+        }
+
+        // Réservation 4 : Exemplaire en transit inter-sites vers le site de retrait (décision Q2)
+        if (isset($allCopies[$copyCursor])) {
+            $cTransit = $allCopies[$copyCursor++];
+            $cTransit->setSite($siteAlAmal)
+                     ->setStatus(CopyStatus::InTransit)
+                     ->setDestinationSite($siteCentre);
+
+            $res4 = (new Reservation())
+                ->setMember($members[3])
+                ->setEdition($cTransit->getEdition())
+                ->setPickupSite($siteCentre)
+                ->setCopy($cTransit)
+                ->setStatus(ReservationStatus::Pending)
+                ->setCreatedAt($now->sub(new \DateInterval('P1D')));
+            $manager->persist($res4);
         }
 
         // Comptes utilisateurs de démonstration (admin, bibliothécaire, adhérent)
