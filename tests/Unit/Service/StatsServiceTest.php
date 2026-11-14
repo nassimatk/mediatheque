@@ -67,7 +67,7 @@ class StatsServiceTest extends TestCase
             ['edition' => $edition, 'loanCount' => 12],
         ];
 
-        $this->loanRepo->expects($this->once())
+        $this->editionRepo->expects($this->once())
             ->method('getTopBorrowedEditions')
             ->with(5)
             ->willReturn($expected);
@@ -96,7 +96,7 @@ class StatsServiceTest extends TestCase
     {
         $this->loanRepo->method('countTotalLoans')->willReturn(80);
         $this->copyRepo->method('countTotalCopies')->willReturn(40);
-        $this->loanRepo->method('getTopBorrowedEditions')->willReturn([]);
+        $this->editionRepo->method('getTopBorrowedEditions')->willReturn([]);
         $this->editionRepo->method('findDormantEditions')->willReturn([]);
 
         $data = $this->service->getDashboardData();

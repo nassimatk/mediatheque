@@ -41,7 +41,7 @@ class StatsService
      */
     public function getTopBorrowedEditions(int $limit = 10): array
     {
-        return $this->loanRepo->getTopBorrowedEditions($limit);
+        return $this->editionRepo->getTopBorrowedEditions($limit);
     }
 
     /**
@@ -57,7 +57,7 @@ class StatsService
     /**
      * Synthèse globale des indicateurs clés.
      *
-     * @return array{totalLoans: int, totalCopies: int, rotationRate: float, topBorrowedCount: int, dormantCount: int}
+     * @return array{totalLoans: int, totalCopies: int, rotationRate: float, topBorrowed: array, dormant: array}
      */
     public function getDashboardData(): array
     {
