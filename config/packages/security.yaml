@@ -8,6 +8,10 @@ security:
                 class: App\Entity\User
                 property: email
 
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_LIBRARIAN, ROLE_MEMBER]
+        ROLE_LIBRARIAN: [ROLE_MEMBER]
+
     firewalls:
         dev:
             pattern: ^/(_profiler(/|$)|(_wdt|assets|build)/)
@@ -28,7 +32,8 @@ security:
                 lifetime: 604800 # 7 jours
 
     access_control:
-        - { path: ^/admin,         roles: ROLE_ADMIN }
+        - { path: ^/comptoir,      roles: ROLE_LIBRARIAN }
+        - { path: ^/admin,         roles: ROLE_LIBRARIAN }
         - { path: ^/espace-membre, roles: ROLE_MEMBER }
 
 when@test:

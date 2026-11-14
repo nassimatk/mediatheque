@@ -11,6 +11,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 
 class LoanCrudController extends AbstractCrudController
 {
+    use ReadOnlyForLibrarianTrait;
+
     public static function getEntityFqcn(): string
     {
         return Loan::class;

@@ -38,7 +38,8 @@ class DashboardController extends AbstractDashboardController
 
         yield MenuItem::section('Adhérents');
         yield MenuItem::linkTo(MemberCrudController::class, 'Adhérents', 'fa fa-id-card');
-        yield MenuItem::linkTo(SubscriptionPlanCrudController::class, 'Formules d\'abonnement', 'fa fa-tags');
+        yield MenuItem::linkTo(SubscriptionPlanCrudController::class, 'Formules d\'abonnement', 'fa fa-tags')
+            ->setPermission('ROLE_ADMIN');
 
         yield MenuItem::section('Circulation');
         yield MenuItem::linkTo(LoanCrudController::class, 'Prêts', 'fa fa-exchange-alt');
@@ -46,9 +47,15 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkTo(PenaltyCrudController::class, 'Pénalités', 'fa fa-exclamation-triangle');
 
         yield MenuItem::section('Réseau');
-        yield MenuItem::linkTo(SiteCrudController::class, 'Sites', 'fa fa-building');
+        yield MenuItem::linkTo(SiteCrudController::class, 'Sites', 'fa fa-building')
+            ->setPermission('ROLE_ADMIN');
 
         yield MenuItem::section('Pilotage');
-        yield MenuItem::linkToRoute('Statistiques du réseau', 'fa fa-chart-line', 'admin_stats');
+        yield MenuItem::linkToRoute('Statistiques du réseau', 'fa fa-chart-line', 'admin_stats')
+            ->setPermission('ROLE_ADMIN');
+
+        yield MenuItem::section('Services');
+        yield MenuItem::linkToRoute('Comptoir de circulation', 'fa fa-cash-register', 'app_librarian_desk');
+        yield MenuItem::linkToRoute('Catalogue public', 'fa fa-globe', 'app_catalog');
     }
 }

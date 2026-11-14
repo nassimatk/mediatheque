@@ -11,6 +11,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 
 class PenaltyCrudController extends AbstractCrudController
 {
+    use ReadOnlyForLibrarianTrait;
+
     public static function getEntityFqcn(): string
     {
         return Penalty::class;

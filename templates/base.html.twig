@@ -31,19 +31,28 @@
             </ul>
             <ul class="navbar-nav">
                 {% if app.user %}
-                    {% if is_granted('ROLE_ADMIN') %}
+                    {% if is_granted('ROLE_LIBRARIAN') %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ path('admin') }}">
-                                <i class="bi bi-gear me-1"></i>Administration
+                            <a class="nav-link text-warning fw-semibold" href="{{ path('app_librarian_desk') }}">
+                                <i class="bi bi-person-badge me-1"></i>Comptoir
                             </a>
                         </li>
+                    {% endif %}
+                    {% if is_granted('ROLE_LIBRARIAN') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ path('admin') }}">
+                                <i class="bi bi-gear me-1"></i>Back-Office
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% if is_granted('ROLE_ADMIN') %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ path('admin_stats') }}">
                                 <i class="bi bi-bar-chart me-1"></i>Statistiques
                             </a>
                         </li>
                     {% endif %}
-                    {% if is_granted('ROLE_MEMBER') %}
+                    {% if is_granted('ROLE_MEMBER') and app.user.member %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ path('app_member_dashboard') }}">
                                 <i class="bi bi-person-circle me-1"></i>Mon Espace

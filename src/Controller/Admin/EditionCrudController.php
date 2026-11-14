@@ -13,6 +13,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\UrlField;
 
 class EditionCrudController extends AbstractCrudController
 {
+    use ReadOnlyForLibrarianTrait;
+
     public static function getEntityFqcn(): string
     {
         return Edition::class;

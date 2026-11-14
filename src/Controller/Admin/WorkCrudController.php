@@ -10,6 +10,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 class WorkCrudController extends AbstractCrudController
 {
+    use ReadOnlyForLibrarianTrait;
+
     public static function getEntityFqcn(): string
     {
         return Work::class;

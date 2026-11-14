@@ -1,0 +1,229 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Comptoir de prêt & retour — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h1 class="h3 fw-bold mb-1"><i class="bi bi-person-badge text-primary me-2"></i>Comptoir de circulation</h1>
+        <p class="text-muted mb-0">Gestion rapide des prêts, retours de documents et réceptions de navette inter-sites.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <span class="badge bg-primary fs-6 py-2 px-3">
+            <i class="bi bi-clock me-1"></i>{{ 'now'|date('d/m/Y') }}
+        </span>
+    </div>
+</div>
+
+{# 3 actions principales du comptoir #}
+<div class="row g-4 mb-5">
+    {# 1. Enregistrement Prêt #}
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-primary">
+            <div class="card-header bg-primary text-white py-3">
+                <h2 class="h5 fw-bold mb-0"><i class="bi bi-box-arrow-up-right me-2"></i>1. Enregistrer un prêt</h2>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_librarian_desk_checkout') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('desk_checkout') }}">
+
+                    <div class="mb-3">
+                        <label for="cardNumber" class="form-label fw-semibold">N° Carte Adhérent</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control font-monospace" id="cardNumber" name="cardNumber" placeholder="Ex: ADH-0001" required autofocus>
+                        </div>
+                        <small class="text-muted">Numéro figurant sur la carte du lecteur</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="barcode" class="form-label fw-semibold">Code-barres du document</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                            <input type="text" class="form-control font-monospace" id="barcode" name="barcode" placeholder="Ex: MED-000001" required>
+                        </div>
+                        <small class="text-muted">Scannez ou saisissez le code-barres</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-2">
+                        <i class="bi bi-check2-circle me-1"></i>Valider le prêt
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# 2. Retour de document #}
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-success">
+            <div class="card-header bg-success text-white py-3">
+                <h2 class="h5 fw-bold mb-0"><i class="bi bi-box-arrow-in-down-left me-2"></i>2. Retourner un document</h2>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_librarian_desk_return') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('desk_return') }}">
+
+                    <div class="mb-3">
+                        <label for="returnBarcode" class="form-label fw-semibold">Code-barres exemplaire</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                            <input type="text" class="form-control font-monospace" id="returnBarcode" name="barcode" placeholder="Ex: MED-000001" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="returnSiteId" class="form-label fw-semibold">Médiathèque de restitution</label>
+                        <select class="form-select" id="returnSiteId" name="siteId" required>
+                            {% for site in sites %}
+                                <option value="{{ site.id }}">{{ site.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Site où le document est physiquement déposé</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="condition" class="form-label fw-semibold">État de l'exemplaire</label>
+                        <select class="form-select" id="condition" name="condition">
+                            <option value="normal" selected>Bon état / Normal (remise en rayon)</option>
+                            <option value="damaged">Dégradé / Abîmé (forfait dégradation 20,00 €)</option>
+                            <option value="lost">Déclaré Perdu (forfait remplacement 50,00 €)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 mt-2">
+                        <i class="bi bi-check2 me-1"></i>Valider le retour
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# 3. Réception de navette / transit #}
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-warning">
+            <div class="card-header bg-warning text-dark py-3">
+                <h2 class="h5 fw-bold mb-0"><i class="bi bi-truck me-2"></i>3. Réception de navette (Transit)</h2>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_librarian_desk_receive_transit') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('desk_receive_transit') }}">
+
+                    <div class="mb-3">
+                        <label for="transitBarcode" class="form-label fw-semibold">Code-barres arrivant</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                            <input type="text" class="form-control font-monospace" id="transitBarcode" name="barcode" placeholder="Ex: MED-000002" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="transitSiteId" class="form-label fw-semibold">Médiathèque réceptrice</label>
+                        <select class="form-select" id="transitSiteId" name="siteId" required>
+                            {% for site in sites %}
+                                <option value="{{ site.id }}">{{ site.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Valide l'arrivée et prépare la réservation</small>
+                    </div>
+
+                    <div class="alert alert-light border small text-muted mb-3">
+                        <i class="bi bi-info-circle me-1"></i>L'arrivée déclenche le délai de réservation (<strong>5 jours</strong>) et rend le livre prêt au retrait.
+                    </div>
+
+                    <button type="submit" class="btn btn-warning w-100">
+                        <i class="bi bi-box-seam me-1"></i>Valider la réception
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Suivi des transits & des derniers prêts #}
+<div class="row g-4">
+    {# Navettes en cours #}
+    <div class="col-lg-6">
+        <div class="card shadow-sm border">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h2 class="h5 fw-bold mb-0"><i class="bi bi-arrow-left-right me-2 text-warning"></i>Transits inter-sites en cours</h2>
+                <span class="badge bg-warning text-dark">{{ inTransitCopies|length }} en cours</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Document</th>
+                            <th>Code-barres</th>
+                            <th>Départ &rarr; Destination</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for copy in inTransitCopies %}
+                            <tr>
+                                <td><strong>{{ copy.edition.work.title }}</strong></td>
+                                <td><code>{{ copy.barcode }}</code></td>
+                                <td>
+                                    <span class="text-muted">{{ copy.site ? copy.site.name : 'Inconnu' }}</span>
+                                    <i class="bi bi-arrow-right mx-1 text-primary"></i>
+                                    <strong>{{ copy.destinationSite ? copy.destinationSite.name : 'Non spécifié' }}</strong>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-3">
+                                    Aucun exemplaire n'est actuellement en transit inter-sites.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# 10 derniers prêts #}
+    <div class="col-lg-6">
+        <div class="card shadow-sm border">
+            <div class="card-header bg-white py-3">
+                <h2 class="h5 fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Derniers prêts enregistrés</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Adhérent</th>
+                            <th>Document</th>
+                            <th>Emprunté le</th>
+                            <th>À rendre</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loan in recentLoans %}
+                            <tr>
+                                <td>
+                                    <strong>{{ loan.member.fullName }}</strong><br>
+                                    <small class="text-muted"><code>{{ loan.member.cardNumber }}</code></small>
+                                </td>
+                                <td>
+                                    {{ loan.copy.edition.work.title }}<br>
+                                    <small class="text-muted"><code>{{ loan.copy.barcode }}</code></small>
+                                </td>
+                                <td>{{ loan.borrowedAt|date('d/m/Y') }}</td>
+                                <td>
+                                    <span class="fw-bold">{{ loan.dueAt|date('d/m/Y') }}</span>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    Aucun prêt récent enregistré.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

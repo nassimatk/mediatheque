@@ -11,6 +11,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 class MemberCrudController extends AbstractCrudController
 {
+    use ReadOnlyForLibrarianTrait;
+
     public static function getEntityFqcn(): string
     {
         return Member::class;

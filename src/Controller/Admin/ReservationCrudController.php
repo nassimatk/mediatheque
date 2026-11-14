@@ -10,6 +10,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 
 class ReservationCrudController extends AbstractCrudController
 {
+    use ReadOnlyForLibrarianTrait;
+
     public static function getEntityFqcn(): string
     {
         return Reservation::class;

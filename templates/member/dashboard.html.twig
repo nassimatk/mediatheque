@@ -83,7 +83,7 @@
 </div>
 
 {# Réservations #}
-<div class="card shadow-sm border">
+<div class="card shadow-sm border mb-4">
     <div class="card-header bg-white py-3">
         <h2 class="h5 fw-bold mb-0"><i class="bi bi-bookmark-check me-2 text-primary"></i>Mes réservations</h2>
     </div>
@@ -95,6 +95,7 @@
                     <th>Site de retrait</th>
                     <th>Demandée le</th>
                     <th>Statut</th>
+                    <th class="text-end">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -115,11 +116,67 @@
                                 <span class="badge bg-secondary">En attente d'un retour</span>
                             {% endif %}
                         </td>
+                        <td class="text-end">
+                            <form method="post" action="{{ path('app_member_cancel_reservation', {id: res.id}) }}" class="d-inline" onsubmit="return confirm('Confirmez-vous l\'annulation de cette réservation ?');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('cancel_res_' ~ res.id) }}">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">
+                                    <i class="bi bi-x-circle me-1"></i>Annuler
+                                </button>
+                            </form>
+                        </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-4">
+                        <td colspan="5" class="text-center text-muted py-4">
                             Aucune réservation active.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Historique des prêts #}
+<div class="card shadow-sm border">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h2 class="h5 fw-bold mb-0"><i class="bi bi-archive me-2 text-primary"></i>Historique de mes prêts</h2>
+        <span class="badge bg-secondary">{{ closedLoans|length }} prêts passés</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Document</th>
+                    <th>Emprunté le</th>
+                    <th>Rendu le</th>
+                    <th>Délai initial</th>
+                    <th>Statut retour</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in closedLoans %}
+                    {% set returnedLate = loan.closedAt > loan.dueAt %}
+                    <tr>
+                        <td>
+                            <strong>{{ loan.copy.edition.work.title }}</strong><br>
+                            <small class="text-muted">{{ loan.copy.edition.publisher }} ({{ loan.copy.barcode }})</small>
+                        </td>
+                        <td>{{ loan.borrowedAt|date('d/m/Y') }}</td>
+                        <td>{{ loan.closedAt|date('d/m/Y') }}</td>
+                        <td>{{ loan.dueAt|date('d/m/Y') }}</td>
+                        <td>
+                            {% if returnedLate %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle me-1"></i>Avec retard</span>
+                            {% else %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>À l'heure</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            Aucun historique de prêt archivé pour le moment.
                         </td>
                     </tr>
                 {% endfor %}
