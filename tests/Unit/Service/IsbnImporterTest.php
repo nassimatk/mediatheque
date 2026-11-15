@@ -29,17 +29,10 @@ use Symfony\Component\HttpClient\Response\MockResponse;
  */
 class IsbnImporterTest extends TestCase
 {
-    /** @var EntityManagerInterface&MockObject */
-    private EntityManagerInterface $em;
-
-    /** @var EditionRepository&MockObject */
-    private EditionRepository $editionRepo;
-
-    /** @var WorkRepository&MockObject */
-    private WorkRepository $workRepo;
-
-    /** @var ContributorRepository&MockObject */
-    private ContributorRepository $contributorRepo;
+    private EntityManagerInterface&MockObject $em;
+    private EditionRepository&MockObject $editionRepo;
+    private WorkRepository&MockObject $workRepo;
+    private ContributorRepository&MockObject $contributorRepo;
 
     protected function setUp(): void
     {
@@ -193,7 +186,7 @@ class IsbnImporterTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertSame(ImportResult::STATUS_FAILED, $results[0]->status);
-        $this->assertStringContainsString('invalide', $results[0]->message);
+        $this->assertStringContainsString('invalide', (string) $results[0]->message);
     }
 
     /**
@@ -213,7 +206,7 @@ class IsbnImporterTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertSame(ImportResult::STATUS_FAILED, $results[0]->status);
-        $this->assertStringContainsString('inconnu dans Open Library', $results[0]->message);
+        $this->assertStringContainsString('inconnu dans Open Library', (string) $results[0]->message);
     }
 
     /**
@@ -239,7 +232,7 @@ class IsbnImporterTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertSame(ImportResult::STATUS_FAILED, $results[0]->status);
-        $this->assertStringContainsString('ne fournit pas de titre', $results[0]->message);
+        $this->assertStringContainsString('ne fournit pas de titre', (string) $results[0]->message);
     }
 
     /**
@@ -309,7 +302,7 @@ class IsbnImporterTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertSame(ImportResult::STATUS_FAILED, $results[0]->status);
-        $this->assertStringContainsString('Erreur réseau', $results[0]->message);
+        $this->assertStringContainsString('Erreur réseau', (string) $results[0]->message);
     }
 
     /**
@@ -354,7 +347,7 @@ class IsbnImporterTest extends TestCase
 
         // 1. Invalide
         $this->assertSame(ImportResult::STATUS_FAILED, $results[0]->status);
-        $this->assertStringContainsString('invalide', $results[0]->message);
+        $this->assertStringContainsString('invalide', (string) $results[0]->message);
 
         // 2. Déjà existant (skipped)
         $this->assertSame(ImportResult::STATUS_SKIPPED, $results[1]->status);
@@ -366,7 +359,7 @@ class IsbnImporterTest extends TestCase
 
         // 4. Inconnu dans Open Library
         $this->assertSame(ImportResult::STATUS_FAILED, $results[3]->status);
-        $this->assertStringContainsString('inconnu dans Open Library', $results[3]->message);
+        $this->assertStringContainsString('inconnu dans Open Library', (string) $results[3]->message);
     }
 
     /**
