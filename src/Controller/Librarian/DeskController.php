@@ -10,6 +10,7 @@ use App\Exception\ReservationException;
 use App\Repository\CopyRepository;
 use App\Repository\LoanRepository;
 use App\Repository\MemberRepository;
+use App\Repository\PenaltyRepository;
 use App\Repository\SiteRepository;
 use App\Service\Circulation\LoanService;
 use App\Service\Circulation\ReservationService;
@@ -27,7 +28,8 @@ class DeskController extends AbstractController
     public function index(
         SiteRepository $siteRepository,
         LoanRepository $loanRepository,
-        CopyRepository $copyRepository
+        CopyRepository $copyRepository,
+        PenaltyRepository $penaltyRepository
     ): Response {
         $sites = $siteRepository->findBy([], ['name' => 'ASC']);
         
@@ -44,10 +46,14 @@ class DeskController extends AbstractController
             10
         );
 
+        // Pénalités impayées nécessitant un encaissement au comptoir
+        $unpaidPenalties = $penaltyRepository->findUnpaidPenalties();
+
         return $this->render('librarian/desk.html.twig', [
             'sites'           => $sites,
             'inTransitCopies' => $inTransitCopies,
             'recentLoans'     => $recentLoans,
+            'unpaidPenalties' => $unpaidPenalties,
         ]);
     }
 
@@ -234,6 +240,40 @@ class DeskController extends AbstractController
             );
         } catch (ReservationException $e) {
             $this->addFlash('error', 'Erreur réception transit : ' . $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_librarian_desk');
+    }
+
+    #[Route('/comptoir/penalite/{id}/payer', name: 'app_librarian_desk_pay_penalty', methods: ['POST'])]
+    public function payPenalty(
+        int $id,
+        Request $request,
+        PenaltyRepository $penaltyRepository,
+        LoanService $loanService
+    ): Response {
+        if (!$this->isCsrfTokenValid('desk_pay_penalty_' . $id, $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+        }
+
+        $penalty = $penaltyRepository->find($id);
+        if (!$penalty) {
+            $this->addFlash('error', 'Pénalité introuvable.');
+            return $this->redirectToRoute('app_librarian_desk');
+        }
+
+        try {
+            $loanService->payPenalty($penalty);
+            $member = $penalty->getLoan()?->getMember();
+            $memberName = $member ? $member->getFullName() . ' (' . $member->getCardNumber() . ')' : 'Adhérent';
+            $amountDh = number_format($penalty->getAmountCents() / 100, 2, ',', ' ');
+
+            $this->addFlash(
+                'success',
+                sprintf('Paiement de %s DH enregistré avec succès pour %s. La pénalité est soldée et l\'adhérent est débloqué.', $amountDh, $memberName)
+            );
+        } catch (LoanException $e) {
+            $this->addFlash('error', 'Erreur lors du paiement de la pénalité : ' . $e->getMessage());
         }
 
         return $this->redirectToRoute('app_librarian_desk');

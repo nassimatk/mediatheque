@@ -104,6 +104,12 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
   5. Une œuvre (`Work`) portant exactement le même titre est réutilisée pour regrouper les différentes éditions sous une même œuvre.
 - **Raison** : Séparation stricte entre catalogage bibliographique et inventaire physique des collections. Respect des préconisations EMC et conformité avec la réponse Q5.
 
+### D-016 — 2026-11-15 — Verrouillage d'intégrité EasyAdmin (D-002) & Encaissement des pénalités au comptoir
+- **Décision** :
+  1. **Interdiction d'édition manuelle dans EasyAdmin** : la création (`NEW`), la modification (`EDIT`) et la suppression (`DELETE`) sont désactivées pour TOUT LE MONDE (y compris `ROLE_ADMIN`) sur `LoanCrudController`, `ReservationCrudController` et `PenaltyCrudController`. Ces entités ne sont accessibles qu'en consultation (`INDEX` et `DETAIL`).
+  2. **Encaissement au comptoir** : le paiement des pénalités est une action de guichet assurée par le bibliothécaire via le comptoir (`POST /comptoir/penalite/{id}/payer` avec jeton CSRF et méthode métier `LoanService::payPenalty()`).
+- **Raison** : Respect strict du principe D-002 ("les règles métier sont dans les services, pas dans les contrôleurs"). Permettre à un administrateur d'éditer ou de supprimer manuellement un prêt, une réservation ou une pénalité violerait les verrous pessimistes, fausserait la file FIFO et contournerait les contrôles de solvabilité des adhérents.
+
 ## Journal des hypothèses
 
 | Date | Hypothèse | Justification |
@@ -117,4 +123,6 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
 | 2026-11-14 | Taux de rotation = prêts totaux ÷ exemplaires totaux | Formule standard d'évaluation de la vivacité des collections en bibliothèque |
 | 2026-11-14 | Pas de réservation d'un document déjà en rayon | Priorité à l'emprunt direct sur place pour ne pas bloquer les rayons (Q2) |
 | 2026-11-15 | Import Open Library : fiche bibliographique seule sans exemplaire physique | Séparation entre notice catalographique et gestion de stock physique en rayon (D-015) |
+| 2026-11-15 | Prêts, réservations et pénalités 100% lecture seule dans EasyAdmin | Intégrité stricte des règles métier et des verrous de concurrence (D-002 / D-016) |
+
 

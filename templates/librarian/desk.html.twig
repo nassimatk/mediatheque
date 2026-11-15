@@ -229,4 +229,72 @@
         </div>
     </div>
 </div>
+
+{# Pénalités impayées & Encaissement au comptoir #}
+<div class="row g-4 mt-2 mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border border-danger-subtle">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h2 class="h5 fw-bold mb-0 text-danger">
+                    <i class="bi bi-cash-coin me-2"></i>Pénalités impayées & Encaissement
+                </h2>
+                <span class="badge {{ unpaidPenalties|length > 0 ? 'bg-danger' : 'bg-success' }}">
+                    {{ unpaidPenalties|length }} impayée(s)
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Adhérent</th>
+                            <th>Motif</th>
+                            <th>Document lié</th>
+                            <th>Montant</th>
+                            <th>Date constatée</th>
+                            <th class="text-end pe-4">Action comptoir</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for penalty in unpaidPenalties %}
+                            <tr>
+                                <td>
+                                    <strong>{{ penalty.loan.member.fullName }}</strong><br>
+                                    <small class="text-muted"><code>{{ penalty.loan.member.cardNumber }}</code></small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">{{ penalty.type.label }}</span>
+                                </td>
+                                <td>
+                                    {{ penalty.loan.copy.edition.work.title }}<br>
+                                    <small class="text-muted"><code>{{ penalty.loan.copy.barcode }}</code></small>
+                                </td>
+                                <td>
+                                    <span class="fw-bold fs-6 text-danger">
+                                        {{ (penalty.amountCents / 100)|number_format(2, ',', ' ') }} DH
+                                    </span>
+                                </td>
+                                <td>{{ penalty.createdAt|date('d/m/Y H:i') }}</td>
+                                <td class="text-end pe-4">
+                                    <form method="post" action="{{ path('app_librarian_desk_pay_penalty', {id: penalty.id}) }}" class="d-inline" onsubmit="return confirm('Confirmer l\'encaissement de {{ (penalty.amountCents / 100)|number_format(2, ',', ' ') }} DH pour {{ penalty.loan.member.fullName }} ?');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('desk_pay_penalty_' ~ penalty.id) }}">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-check2-circle me-1"></i>Encaisser & Marquer payée
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-check-circle text-success fs-4 d-block mb-1"></i>
+                                    Aucune pénalité impayée sur le réseau. Tous les adhérents sont en règle !
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

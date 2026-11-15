@@ -34,4 +34,22 @@ class PenaltyRepository extends ServiceEntityRepository
 
         return $count > 0;
     }
+
+    /**
+     * Retourne toutes les pénalités impayées (pour affichage et gestion au comptoir).
+     *
+     * @return Penalty[]
+     */
+    public function findUnpaidPenalties(): array
+    {
+        return $this->createQueryBuilder('p')
+            ->join('p.loan', 'l')
+            ->addSelect('l')
+            ->join('l.member', 'm')
+            ->addSelect('m')
+            ->where('p.paidAt IS NULL')
+            ->orderBy('p.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

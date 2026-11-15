@@ -6,6 +6,7 @@ use App\Entity\Copy;
 use App\Entity\Edition;
 use App\Entity\Loan;
 use App\Entity\Member;
+use App\Entity\Penalty;
 use App\Entity\Reservation;
 use App\Entity\Site;
 use App\Entity\SubscriptionPlan;
@@ -463,5 +464,36 @@ class LoanServiceTest extends TestCase
         $this->service->return($loan2, returnSite: $site);
         $this->assertSame($copy2, $resB->getCopy());
         $this->assertSame(ReservationStatus::Ready, $resB->getStatus());
+    }
+
+    // =========================================================================
+    // payPenalty()
+    // =========================================================================
+
+    public function testPayPenaltySucceedsAndSetsPaidAt(): void
+    {
+        $penalty = new Penalty();
+        $penalty->setAmountCents(2000);
+        $this->assertNull($penalty->getPaidAt());
+
+        $this->em->expects($this->once())->method('flush');
+
+        $this->service->payPenalty($penalty);
+
+        $this->assertNotNull($penalty->getPaidAt());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $penalty->getPaidAt());
+    }
+
+    public function testPayPenaltyThrowsIfAlreadyPaid(): void
+    {
+        $penalty = new Penalty();
+        $penalty->setPaidAt(new \DateTimeImmutable('-1 hour'));
+
+        $this->expectException(LoanException::class);
+        $this->expectExceptionMessage('Cette pénalité a déjà été réglée.');
+
+        $this->em->expects($this->never())->method('flush');
+
+        $this->service->payPenalty($penalty);
     }
 }

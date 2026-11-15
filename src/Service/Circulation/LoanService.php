@@ -217,6 +217,21 @@ class LoanService
         });
     }
 
+    /**
+     * Enregistre le paiement d'une pénalité par un adhérent au comptoir.
+     *
+     * @throws LoanException si la pénalité est déjà réglée
+     */
+    public function payPenalty(Penalty $penalty): void
+    {
+        if ($penalty->getPaidAt() !== null) {
+            throw new LoanException('Cette pénalité a déjà été réglée.');
+        }
+
+        $penalty->setPaidAt(new \DateTimeImmutable());
+        $this->em->flush();
+    }
+
     // -------------------------------------------------------------------------
     // Helpers privés
     // -------------------------------------------------------------------------
