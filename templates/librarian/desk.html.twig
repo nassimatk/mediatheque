@@ -9,6 +9,9 @@
         <p class="text-muted mb-0">Gestion rapide des prêts, retours de documents et réceptions de navette inter-sites.</p>
     </div>
     <div class="col-md-4 text-md-end">
+        <a href="{{ path('app_librarian_desk_import_isbn') }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-cloud-arrow-down me-1"></i>Importer Open Library
+        </a>
         <span class="badge bg-primary fs-6 py-2 px-3">
             <i class="bi bi-clock me-1"></i>{{ 'now'|date('d/m/Y') }}
         </span>

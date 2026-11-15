@@ -10,6 +10,7 @@ parameters:
     app.reservation_hold_days: 5
     app.penalty_lost_cents: 5000
     app.penalty_damaged_cents: 2000
+    app.openlibrary_contact: '%env(string:OPENLIBRARY_CONTACT)%'
 
 services:
     # default configuration for services in *this* file
@@ -20,6 +21,7 @@ services:
             int $reservationHoldDays: '%app.reservation_hold_days%'
             int $penaltyLostCents: '%app.penalty_lost_cents%'
             int $penaltyDamagedCents: '%app.penalty_damaged_cents%'
+            string $contactEmail: '%app.openlibrary_contact%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name

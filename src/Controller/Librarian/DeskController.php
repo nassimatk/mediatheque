@@ -13,6 +13,7 @@ use App\Repository\MemberRepository;
 use App\Repository\SiteRepository;
 use App\Service\Circulation\LoanService;
 use App\Service\Circulation\ReservationService;
+use App\Service\Integration\OpenLibrary\IsbnImporter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -236,5 +237,59 @@ class DeskController extends AbstractController
         }
 
         return $this->redirectToRoute('app_librarian_desk');
+    }
+
+    // -------------------------------------------------------------------------
+    // Niveau 4 — Import Open Library
+    // -------------------------------------------------------------------------
+
+    #[Route('/comptoir/import-isbn', name: 'app_librarian_desk_import_isbn', methods: ['GET', 'POST'])]
+    public function importIsbn(Request $request, IsbnImporter $isbnImporter): Response
+    {
+        $results = [];
+
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('desk_import_isbn', $request->request->getString('_token'))) {
+                throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            $rawInput = $request->request->getString('isbns');
+            // Découper en lignes, supprimer les vides
+            $lines = array_filter(
+                array_map('trim', preg_split('/\r?\n/', $rawInput) ?: []),
+                fn(string $l) => $l !== ''
+            );
+
+            if (empty($lines)) {
+                $this->addFlash('error', 'Veuillez saisir au moins un ISBN.');
+            } else {
+                $results = $isbnImporter->import(array_values($lines));
+
+                $created = count(array_filter($results, fn($r) => $r->isCreated()));
+                $skipped = count(array_filter($results, fn($r) => $r->isSkipped()));
+                $failed  = count(array_filter($results, fn($r) => $r->isFailed()));
+
+                if ($created > 0) {
+                    $this->addFlash('success', sprintf(
+                        '%d fiche(s) créée(s) avec succès. %d ignorée(s) (doublon). %d échec(s).',
+                        $created, $skipped, $failed
+                    ));
+                } elseif ($skipped > 0 && $failed === 0) {
+                    $this->addFlash('warning', sprintf(
+                        'Tous les ISBN sont déjà présents dans le catalogue (%d doublon(s)).',
+                        $skipped
+                    ));
+                } else {
+                    $this->addFlash('error', sprintf(
+                        'Aucune fiche créée. %d doublon(s), %d échec(s).',
+                        $skipped, $failed
+                    ));
+                }
+            }
+        }
+
+        return $this->render('librarian/import_isbn.html.twig', [
+            'results' => $results,
+        ]);
     }
 }

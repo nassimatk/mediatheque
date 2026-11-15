@@ -95,6 +95,15 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
 - **Décision** : le catalogue fait foi, l'import n'écrase jamais une édition existante (il la signale). Sans titre, l'import est rejeté. Si un champ secondaire manque, la fiche est créée avec le champ vide. L'import par lot produit un rapport par ISBN (créé, ignoré, échec).
 - **Raison** : ne pas corrompre des données saisies par les bibliothécaires.
 
+### D-015 — 2026-11-15 — Import Open Library sans exemplaires physiques automatiques
+- **Décision** :
+  1. L'import Open Library crée uniquement la fiche bibliographique : une `Work` (l'œuvre), une `Edition` (le livre avec son ISBN-13, son titre, son éditeur, son année et son URL de couverture), et les `Contributor` reliés via `EditionContributor` avec le rôle `ContributorRole::Author`.
+  2. Aucun exemplaire physique (`Copy`) n'est créé automatiquement lors de l'import : le bibliothécaire ajoute ensuite les exemplaires en rayon via le back-office lorsqu'il reçoit les volumes physiques.
+  3. L'ISBN-13 est l'identifiant pivot de référence du catalogue. Tout ISBN-10 saisi est validé puis converti en ISBN-13 avant toute recherche en base ou appel API.
+  4. L'URL de couverture fournie par Open Library est stockée telle quelle en base ; aucune image binaire n'est téléchargée localement.
+  5. Une œuvre (`Work`) portant exactement le même titre est réutilisée pour regrouper les différentes éditions sous une même œuvre.
+- **Raison** : Séparation stricte entre catalogage bibliographique et inventaire physique des collections. Respect des préconisations EMC et conformité avec la réponse Q5.
+
 ## Journal des hypothèses
 
 | Date | Hypothèse | Justification |
@@ -107,3 +116,5 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
 | 2026-11-14 | `/admin` et `/comptoir` protégés par rôles | `ROLE_ADMIN` (complet), `ROLE_LIBRARIAN` (comptoir + back-office lecture seule), `ROLE_MEMBER` (espace adhérent) |
 | 2026-11-14 | Taux de rotation = prêts totaux ÷ exemplaires totaux | Formule standard d'évaluation de la vivacité des collections en bibliothèque |
 | 2026-11-14 | Pas de réservation d'un document déjà en rayon | Priorité à l'emprunt direct sur place pour ne pas bloquer les rayons (Q2) |
+| 2026-11-15 | Import Open Library : fiche bibliographique seule sans exemplaire physique | Séparation entre notice catalographique et gestion de stock physique en rayon (D-015) |
+

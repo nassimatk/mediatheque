@@ -10,7 +10,7 @@ Application web Symfony 7.4 / MySQL 8, livrée avec un environnement Docker.
 | 1 | Modéliser (modèle, migrations, fixtures, back-office EasyAdmin) | ✅ Terminé |
 | 2 | Règles métier, concurrence, circulation inter-sites et tests unitaires | ✅ Terminé (34 tests, 101 assertions) |
 | 3 | Produit (rôles & sécurité, catalogue, espace adhérent, comptoir, stats) | ✅ Terminé |
-| 4 | API externe (Open Library import unitaire et par lot) | ⬜ À faire |
+| 4 | API externe (Open Library import unitaire et par lot, rapport d'import) | ✅ Terminé (tests unitaires avec MockHttpClient) |
 | 5 | Livraison (Docker, INSTALL.md, note conceptuelle, traces IA) | 🟨 En cours (Docker opérationnel) |
 
 > Ce tableau est mis à jour à chaque étape validée.
