@@ -8,12 +8,12 @@ Application web Symfony 7.4 / MySQL 8, livrée avec un environnement Docker.
 | Niveau | Thème | État |
 |---|---|---|
 | 1 | Modéliser (modèle, migrations, fixtures, back-office EasyAdmin) | ✅ Terminé |
-| 2 | Règles métier, concurrence, circulation inter-sites et tests unitaires | ✅ Terminé (45 tests, 167 assertions) |
+| 2 | Règles métier, concurrence, circulation inter-sites et tests unitaires | ✅ Terminé (34 tests unitaires) |
 | 3 | Produit (rôles & sécurité, catalogue, espace adhérent, comptoir, stats) | ✅ Terminé |
-| 4 | API externe (Open Library import unitaire et par lot, rapport d'import) | ✅ Terminé (tests unitaires avec MockHttpClient) |
-| 5 | Livraison (Docker, INSTALL.md, note conceptuelle, traces IA) | 🟨 En cours (Docker opérationnel) |
+| 4 | API externe (Open Library import unitaire et par lot, rapport d'import) | ✅ Terminé (9 tests unitaires avec MockHttpClient) |
+| 5 | Livraison (Docker, INSTALL.md, note conceptuelle, tests d'intégration, traces IA) | ✅ Terminé (3 tests d'intégration MySQL, total de 48 tests / 190 assertions) |
 
-> Ce tableau est mis à jour à chaque étape validée.
+> Tous les niveaux du sujet 4 sont validés et testés avec succès.
 
 ## Stack
 
@@ -63,5 +63,7 @@ docker compose run --rm --no-deps php sh -c "composer create-project symfony/ske
 
 ## Documentation
 
+- [Guide d'installation pas à pas](INSTALL.md)
+- [Note conceptuelle](docs/NOTE_CONCEPTUELLE.md)
 - [Modèle de données](docs/MODELE.md)
 - [Journal des décisions](docs/DECISIONS.md)

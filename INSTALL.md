@@ -26,6 +26,7 @@ Ouvrez un terminal et exécutez :
 git clone https://github.com/nassimatk/mediatheque.git
 cd mediatheque
 docker compose up -d --build
+docker compose logs -f php   # attendre « ready to handle connections », puis Ctrl+C
 ```
 
 > Les conteneurs `mediatheque-php-1`, `mediatheque-nginx-1` et `mediatheque-database-1` démarrent en arrière-plan.
@@ -87,7 +88,7 @@ docker compose exec -T php php bin/phpunit
 
 **Résultat attendu :**
 ```text
-OK (45 tests, 167 assertions)
+OK (48 tests, 190 assertions)
 ```
 
 ---
