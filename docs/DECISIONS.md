@@ -66,6 +66,27 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
 - **Décision** : `findNextPendingForEdition` filtre strictement les réservations avec `copy IS NULL` et départage par `id ASC`.
 - **Raison** : éviter qu'une réservation déjà en transit reçoive un deuxième exemplaire lors du retour d'un autre document de la même édition.
 
+### D-012 — 2026-11-14 — Rôles et contrôle d'accès granulaire (RBAC)
+- **Décision** : Mise en place d'une hiérarchie de rôles Symfony (`ROLE_ADMIN` hérite de `ROLE_LIBRARIAN` et `ROLE_MEMBER`, `ROLE_LIBRARIAN` hérite de `ROLE_MEMBER`).
+  - `ROLE_ADMIN` : Contrôle absolu sur l'application, gestion exclusive des formules d'abonnement (`SubscriptionPlan`) et des médiathèques (`Site`), accès aux statistiques du réseau.
+  - `ROLE_LIBRARIAN` : Accès au comptoir de circulation (`/comptoir`) et accès en **lecture seule** au back-office EasyAdmin (`/admin`) via `ReadOnlyForLibrarianTrait` (actions `NEW`, `EDIT`, `DELETE` désactivées sur le catalogue et les usagers).
+  - `ROLE_MEMBER` : Accès restreint à son espace personnel (`/espace-membre`) : consultation des prêts ouverts, historique des prêts passés, prolongation et annulation de réservations.
+- **Raison** : Respecter le principe de moindre privilège. Les bibliothécaires opèrent au quotidien sans risque de supprimer des entités système ou de modifier des tarifs, réservés à la direction administrative.
+
+### D-013 — 2026-11-14 — Comptoir de circulation dédié pour les bibliothécaires (`/comptoir`)
+- **Décision** : Création d'une interface de guichet spécifique, rapide et intuitive pour les agents d'accueil, articulée en trois opérations :
+  1. **Prêt express** : saisie carte adhérent + code-barres document avec contrôle automatique des quotas et pénalités.
+  2. **Retour express** : saisie code-barres + médiathèque de retour + déclaration d'état (normal, dégradé, perdu avec calcul de pénalité).
+  3. **Réception de transit** : validation de l'arrivée physique d'une navette, déclenchant le passage en statut `Ready` et la fenêtre de retrait de 5 jours.
+  Elle intègre également un suivi en temps réel des navettes inter-sites en cours.
+- **Raison** : Les bibliothécaires au contact du public ont besoin d'une interface de circulation fluide, manipulable au lecteur code-barres, bien plus directe que la navigation CRUD d'un back-office classique.
+
+### D-014 — 2026-11-14 — Définition et calcul du taux de rotation des collections
+- **Décision** : Le taux de rotation global du réseau est calculé selon la formule normalisée des bibliothèques :
+  $$\text{Taux de rotation} = \frac{\text{Nombre total de prêts enregistrés}}{\text{Nombre total d'exemplaires physiques en circulation}}$$
+  Le service `StatsService` fournit cet indicateur (arrondi à 2 décimales), complété par le Top 10 des éditions les plus sollicitées et la liste des documents dormants (ayant au moins 1 exemplaire en rayon mais 0 prêt enregistré).
+- **Raison** : Fournir une mesure claire de la vitalité des collections pour orienter la politique documentaire (réassort des succès et désherbage des titres dormants).
+
 ### Q4 — 2026-11-13 — Auteurs multiples, traducteurs, illustrateurs
 - **Décision** : table `Contributor` (la personne) et table de liaison `EditionContributor` portant un rôle (auteur, traducteur, illustrateur, réalisateur), unique par (édition, personne, rôle).
 - **Raison** : plusieurs personnes par document, plusieurs rôles par personne, et un traducteur est propre à une édition.
@@ -81,6 +102,8 @@ Chaque décision est datée et justifiée. Format : contexte, décision, raison.
 | 2026-11-13 | Montants en centimes de dirham, entiers | Pas d'erreur d'arrondi |
 | 2026-11-13 | Le statut d'un prêt se déduit des dates (`closedAt`, `dueAt`) | Pas d'incohérence possible entre statut et dates |
 | 2026-11-13 | Pas d'historique des transferts | Le sujet demande de faire circuler, pas de tracer |
-| 2026-11-13 | Un exemplaire ne se prête qu'une fois à la fois : transaction avec verrou sur la ligne `Copy` | MySQL n'a pas de contrainte simple pour cela ; sera testé au niveau 2 |
-| 2026-11-13 | Pas de paiement en ligne, pas d'e-mails | Hors périmètre ; le statut suffit |
-| 2026-11-13 | `/admin` protégé seulement au niveau 3 | Projet local sans données réelles |
+| 2026-11-13 | Un exemplaire ne se prête qu'une fois à la fois : transaction avec verrou sur la ligne `Copy` | MySQL n'a pas de contrainte simple pour cela (testé au niveau 2) |
+| 2026-11-13 | Pas de paiement en ligne, pas d'e-mails | Hors périmètre ; le statut de réservation suffit |
+| 2026-11-14 | `/admin` et `/comptoir` protégés par rôles | `ROLE_ADMIN` (complet), `ROLE_LIBRARIAN` (comptoir + back-office lecture seule), `ROLE_MEMBER` (espace adhérent) |
+| 2026-11-14 | Taux de rotation = prêts totaux ÷ exemplaires totaux | Formule standard d'évaluation de la vivacité des collections en bibliothèque |
+| 2026-11-14 | Pas de réservation d'un document déjà en rayon | Priorité à l'emprunt direct sur place pour ne pas bloquer les rayons (Q2) |
