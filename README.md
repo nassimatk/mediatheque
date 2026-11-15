@@ -33,12 +33,6 @@ docker compose up -d --build
 
 Application : http://localhost:8081
 
-### Première installation du squelette Symfony (une seule fois)
-
-```bash
-docker compose run --rm --no-deps php sh -c "composer create-project symfony/skeleton:^7.4 /tmp/sk --no-interaction --no-scripts && cp -an /tmp/sk/. /app/ && composer config extra.symfony.docker false && composer install --no-interaction"
-```
-
 ## Organisation du dépôt
 
 | Dossier | Rôle |
@@ -59,7 +53,7 @@ docker compose run --rm --no-deps php sh -c "composer create-project symfony/ske
 - `dev` : tout le développement.
 - Fusion `dev` → `main` avec `git merge --no-ff` : **jamais** de squash, rebase ni `push --force`.
 - Commits courts et ciblés, format `type(portée): message` (`feat`, `fix`, `test`, `docs`, `chore`, `refactor`).
-- Le code produit avec l'aide d'une IA est commité comme le reste et signalé par un trailer `Co-authored-by:`.
+- L’usage de l’IA est documenté dans la note conceptuelle et dans l’archive de traces envoyée par e-mail.
 
 ## Documentation
 
