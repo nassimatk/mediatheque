@@ -1,0 +1,169 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Statistiques & Indicateurs du réseau — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold mb-1">
+            <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Statistiques & Pilotage du réseau
+        </h1>
+        <p class="text-muted small mb-0">Indicateurs de circulation et de rotation du fonds documentaire (Niveau 3)</p>
+    </div>
+    <a href="{{ path('admin') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Retour au Back-office
+    </a>
+</div>
+
+{# 1. Cartes d'indicateurs clés (KPIs) #}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-primary text-white p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-white-50 small text-uppercase fw-bold">Prêts enregistrés</div>
+                    <div class="display-6 fw-bold mt-1">{{ stats.totalLoans }}</div>
+                    <div class="small mt-1 text-white-75">Historique et prêts en cours</div>
+                </div>
+                <div class="fs-1 text-white-50"><i class="bi bi-journal-arrow-up"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-success text-white p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-white-50 small text-uppercase fw-bold">Exemplaires physiques</div>
+                    <div class="display-6 fw-bold mt-1">{{ stats.totalCopies }}</div>
+                    <div class="small mt-1 text-white-75">Répartis sur les 2 médiathèques</div>
+                </div>
+                <div class="fs-1 text-white-50"><i class="bi bi-bookshelf"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-dark text-white p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-white-50 small text-uppercase fw-bold">Taux de rotation</div>
+                    <div class="display-6 fw-bold mt-1 text-warning">{{ stats.rotationRate }}</div>
+                    <div class="small mt-1 text-white-75">Prêts moyens par exemplaire</div>
+                </div>
+                <div class="fs-1 text-white-50"><i class="bi bi-arrow-repeat"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {# 2. Top des documents les plus empruntés #}
+    <div class="col-lg-6">
+        <div class="card shadow-sm border h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h2 class="h5 fw-bold mb-0 text-primary">
+                    <i class="bi bi-trophy-fill text-warning me-2"></i>Top 10 des documents les plus empruntés
+                </h2>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                    {{ stats.topBorrowed|length }} titres
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th style="width: 50px;">Rang</th>
+                            <th>Titre / Édition</th>
+                            <th>Support</th>
+                            <th class="text-end">Nb Prêts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stats.topBorrowed %}
+                            <tr>
+                                <td>
+                                    {% if loop.index == 1 %}
+                                        <span class="badge bg-warning text-dark fw-bold">🥇 1</span>
+                                    {% elseif loop.index == 2 %}
+                                        <span class="badge bg-secondary text-white fw-bold">🥈 2</span>
+                                    {% elseif loop.index == 3 %}
+                                        <span class="badge bg-danger-subtle text-danger fw-bold">🥉 3</span>
+                                    {% else %}
+                                        <span class="text-muted fw-bold ms-2">{{ loop.index }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ item.edition.work.title }}</strong><br>
+                                    <small class="text-muted">{{ item.edition.publisher }} ({{ item.edition.publicationYear }})</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-dark border">{{ item.edition.type.label }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge bg-primary fs-6">{{ item.loanCount }}</span>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">Aucun prêt enregistré pour le moment.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# 3. Documents dormants (jamais empruntés) #}
+    <div class="col-lg-6">
+        <div class="card shadow-sm border h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h2 class="h5 fw-bold mb-0 text-danger">
+                    <i class="bi bi-moon-stars me-2"></i>Documents dormants (jamais empruntés)
+                </h2>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                    {{ stats.dormant|length }} titres en rayon
+                </span>
+            </div>
+            <div class="card-body p-0">
+                <div class="p-3 bg-light border-bottom small text-muted">
+                    <i class="bi bi-info-circle me-1"></i>Titres présents physiquement dans les médiathèques mais n'ayant encore enregistré aucun prêt historique.
+                </div>
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th>Titre</th>
+                                <th>Support</th>
+                                <th>Éditeur</th>
+                                <th class="text-end">Exemplaires</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for edition in stats.dormant %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ edition.work.title }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary-subtle text-dark border">{{ edition.type.label }}</span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ edition.publisher }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-light text-dark border">{{ edition.copies|length }}</span>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">Tous les documents ont été empruntés au moins une fois !</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

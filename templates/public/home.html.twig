@@ -1,0 +1,241 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Accueil — Médiathèques EMC{% endblock %}
+
+{% block body %}
+{# ── Hero Section ── #}
+<div class="hero-container text-center">
+    <div class="badge-kicker mb-3">
+        <i class="bi bi-compass"></i> Réseau municipal de lecture publique
+    </div>
+    
+    <h1 class="hero-title">
+        Bienvenue sur le réseau des<br>Médiathèques
+    </h1>
+    
+    <p class="hero-subtitle">
+        Découvrez plus de 8 000 documents répartis sur nos deux médiathèques de quartier : 
+        <strong>Centre-Ville</strong> et <strong>Quartier Nord</strong>
+    </p>
+
+    {# Barre de recherche centrale #}
+    <div class="hero-search-card">
+        <form method="get" action="{{ path('app_catalog') }}" class="d-flex align-items-center">
+            <i class="bi bi-search text-muted fs-5 me-2"></i>
+            <input type="text" name="q" class="form-control hero-search-input flex-grow-1" placeholder="Rechercher par titre, auteur, sujet ou code ISBN...">
+            <button type="submit" class="btn btn-emc-navy ms-2">
+                <i class="bi bi-search me-1"></i>Explorer le catalogue
+            </button>
+        </form>
+    </div>
+
+    {# Catégories rapides #}
+    <div class="hero-pills">
+        <a href="{{ path('app_catalog', {type: 'book'}) }}" class="hero-pill-item">Romans & Fiction</a>
+        <a href="{{ path('app_catalog', {type: 'comic'}) }}" class="hero-pill-item">Bandes Dessinées</a>
+        <a href="{{ path('app_catalog', {q: 'Jeunesse'}) }}" class="hero-pill-item">Fonds Jeunesse</a>
+        <a href="{{ path('app_catalog', {q: 'Arts'}) }}" class="hero-pill-item">Beaux-Arts & Essais</a>
+        <a href="{{ path('app_catalog', {type: 'dvd'}) }}" class="hero-pill-item">Multimédia & Revues</a>
+    </div>
+</div>
+
+{# ── Section Dernières Acquisitions ── #}
+<div class="my-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 pt-2">
+        <div>
+            <div class="small text-uppercase fw-bold text-muted mb-1" style="letter-spacing: 0.08em; font-size: 0.74rem;">
+                <i class="bi bi-stars text-warning me-1"></i>Catalogue mis à jour
+            </div>
+            <h2 class="h3 fw-bold mb-0">Dernières acquisitions</h2>
+        </div>
+        <div class="text-muted small">
+            Sélection récente dans les collections de nos deux sites
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for edition in editions %}
+            <div class="col">
+                <div class="emc-book-card">
+                    <div>
+                        <div class="emc-book-card-header">
+                            <span class="badge-type">{{ edition.type.label }}</span>
+                            {% set dispoCount = 0 %}
+                            {% for c in edition.copies %}
+                                {% if c.status.value == 'available' %}
+                                    {% set dispoCount = dispoCount + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if dispoCount > 0 %}
+                                <span class="badge-status badge-available">
+                                    <span class="status-dot"></span>Disponible
+                                </span>
+                            {% else %}
+                                <span class="badge-status badge-unavailable">
+                                    <span class="status-dot"></span>Non disponible
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <h3 class="emc-book-title">
+                            <a href="{{ path('app_catalog_show', {id: edition.id}) }}">
+                                {{ edition.work.title }}
+                            </a>
+                        </h3>
+
+                        <div class="emc-book-meta">
+                            <div class="meta-row">
+                                <span>Éditeur :</span>
+                                <strong>{{ edition.publisher ?? 'Éditeur non renseigné' }} ({{ edition.publicationYear ?? 'N.C.' }})</strong>
+                            </div>
+                            <div class="meta-row">
+                                <span>ISBN :</span>
+                                <code>{{ edition.isbn }}</code>
+                            </div>
+                            <div class="meta-row">
+                                <span>Emplacement :</span>
+                                <span>
+                                    <i class="bi bi-geo-alt text-muted me-1"></i>
+                                    {{ edition.copies|length > 0 and edition.copies[0].site ? edition.copies[0].site.name : 'Réseau EMC' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <a href="{{ path('app_catalog_show', {id: edition.id}) }}" class="emc-btn-outline">
+                            <i class="bi bi-book me-1"></i>Voir la disponibilité
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">Aucun document pour le moment.</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+{# ── Section Nos deux médiathèques de quartier ── #}
+<div id="sites" class="sites-section">
+    <div class="text-center mx-auto mb-5" style="max-width: 680px;">
+        <div class="small text-uppercase fw-bold text-muted mb-1" style="letter-spacing: 0.08em; font-size: 0.74rem;">
+            Proximité & Savoir
+        </div>
+        <h2 class="h2 fw-bold mb-2">Nos deux médiathèques de quartier</h2>
+        <p class="text-muted small mb-0" style="line-height: 1.6;">
+            Des espaces de lecture calmes, du matériel moderne, et une équipe d'archivistes et bibliothécaires à votre écoute pour vos recherches documentaires.
+        </p>
+    </div>
+
+    <div class="row g-4 align-items-stretch">
+        {# Site 1 : Centre-Ville #}
+        <div class="col-lg-6">
+            <div class="site-card d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge-type bg-dark text-white border-0">Site Principal</span>
+                        <span class="small text-success fw-semibold">
+                            <i class="bi bi-clock me-1"></i>Ouvert aujourd'hui jusqu'à 19h00
+                        </span>
+                    </div>
+                    <h3 class="h4 fw-bold mb-2">Médiathèque Centre-Ville</h3>
+                    <p class="text-muted small mb-3" style="line-height: 1.6;">
+                        Située au cœur de la ville historique, la médiathèque propose 3 niveaux dédiés aux fonds littéraires classiques, aux bandes dessinées, aux beaux-arts ainsi qu'une salle d'études silencieuse de 80 places assises.
+                    </p>
+                    <div class="rounded-3 overflow-hidden mb-3 border p-4 text-center" style="background: linear-gradient(135deg, #182232 0%, #2b394f 100%); color: #ffffff;">
+                        <i class="bi bi-bank2 fs-1 mb-2 d-block text-warning"></i>
+                        <span class="small text-light fw-medium">Salle patrimoniale & Espace d'études silencieux</span>
+                    </div>
+                    <div class="small text-muted d-flex flex-column gap-1 mb-3">
+                        <div><i class="bi bi-geo-alt me-2 text-dark"></i>14, Rue de l'Horloge — Centre Ancien</div>
+                        <div><i class="bi bi-calendar3 me-2 text-dark"></i>Mar - Sam : 10h00 - 19h00 (Fermé Dim & Lun)</div>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <a href="{{ path('app_catalog') }}" class="fw-semibold text-decoration-none text-dark small">
+                        Consulter les collections du Centre-Ville <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {# Site 2 : Quartier Nord (Al Amal) + Services aux adhérents #}
+        <div class="col-lg-6 d-flex flex-column gap-4">
+            <div class="site-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge-type">Pôle Multimédia</span>
+                    <span class="small text-muted fw-semibold">
+                        <i class="bi bi-clock me-1"></i>Fermé à 18h30
+                    </span>
+                </div>
+                <h3 class="h4 fw-bold mb-2">Médiathèque Quartier Nord (Al Amal)</h3>
+                <p class="text-muted small mb-3" style="line-height: 1.6;">
+                    Spécialisée dans les sciences, le numérique, les revues d'actualité et la création contemporaine. Postes informatiques et cabines audio disponibles.
+                </p>
+                <div class="small text-muted d-flex flex-column gap-1 mb-3">
+                    <div><i class="bi bi-geo-alt me-2 text-dark"></i>85, Avenue des Savoirs — Quartier Nord</div>
+                    <div><i class="bi bi-calendar3 me-2 text-dark"></i>Mer - Dim : 10h00 - 18h30</div>
+                </div>
+                <a href="{{ path('app_catalog') }}" class="fw-semibold text-decoration-none text-dark small">
+                    Découvrir le Quartier Nord <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+
+            {# Services aux adhérents (Carte foncée) #}
+            <div id="services" class="services-dark-card flex-grow-1">
+                <h4 class="h5 fw-bold mb-3 d-flex align-items-center text-white">
+                    <i class="bi bi-stars text-warning me-2"></i>Services aux adhérents
+                </h4>
+                <div class="service-item">
+                    <i class="bi bi-arrow-left-right service-icon"></i>
+                    <div>
+                        <strong>Prêt inter-sites :</strong> Faites venir un document d'une médiathèque à l'autre en 24h ouvrées par navette interne.
+                    </div>
+                </div>
+                <div class="service-item">
+                    <i class="bi bi-box-seam service-icon"></i>
+                    <div>
+                        <strong>Réservation en ligne :</strong> Réservez vos ouvrages à l'avance et retirez-les dès leur mise de côté en rayon.
+                    </div>
+                </div>
+                <div class="service-item">
+                    <i class="bi bi-people service-icon"></i>
+                    <div>
+                        <strong>Rencontres littéraires :</strong> Conférences d'auteurs, débats et ateliers d'écriture chaque vendredi soir.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Bannière Adhérent (Carte du lecteur unique) ── #}
+<div class="cta-banner">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+            <span class="badge-kicker mb-2">Carte du lecteur unique</span>
+            <h3 class="h3 fw-bold mb-2">Gérez vos emprunts et prolongations en toute simplicité</h3>
+            <p class="text-muted mb-0 small" style="line-height: 1.6;">
+                Votre inscription donne accès immédiat aux deux établissements du réseau. Empruntez jusqu'à 8 documents simultanés pour une durée de 4 semaines, renouvelable en un clic depuis votre espace en ligne.
+            </p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+            {% if is_granted('ROLE_MEMBER') and app.user.member %}
+                <a href="{{ path('app_member_dashboard') }}" class="btn btn-emc-navy btn-emc-pill px-4 py-2">
+                    <i class="bi bi-person-circle me-1"></i>Accéder à Mon Espace
+                </a>
+            {% elseif not app.user %}
+                <a href="{{ path('app_login') }}" class="btn btn-emc-navy btn-emc-pill px-4 py-2">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Accéder à Mon Espace
+                </a>
+            {% else %}
+                <a href="{{ path('app_catalog') }}" class="btn btn-emc-navy btn-emc-pill px-4 py-2">
+                    <i class="bi bi-book me-1"></i>Explorer le catalogue
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

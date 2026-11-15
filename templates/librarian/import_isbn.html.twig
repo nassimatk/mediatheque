@@ -1,0 +1,188 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Import Open Library par ISBN — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h1 class="h3 fw-bold mb-1">
+            <i class="bi bi-cloud-download text-info me-2"></i>Import Open Library par ISBN
+        </h1>
+        <p class="text-muted mb-0">
+            Collez un ou plusieurs ISBN (un par ligne). La fiche bibliographique (titre, auteurs, éditeur, couverture)
+            est créée automatiquement depuis <strong>Open Library</strong>. Les exemplaires physiques
+            seront ajoutés ensuite dans le back-office.
+        </p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{{ path('app_librarian_desk') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Retour au comptoir
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    {# Formulaire d'import #}
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-info h-100">
+            <div class="card-header bg-info text-white py-3">
+                <h2 class="h5 fw-bold mb-0">
+                    <i class="bi bi-upc me-2"></i>Saisie des ISBN
+                </h2>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_librarian_desk_import_isbn') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('desk_import_isbn') }}">
+
+                    <div class="mb-3">
+                        <label for="isbns" class="form-label fw-semibold">
+                            ISBN à importer <span class="text-muted fw-normal">(un par ligne)</span>
+                        </label>
+                        <textarea
+                            class="form-control font-monospace"
+                            id="isbns"
+                            name="isbns"
+                            rows="10"
+                            placeholder="9780140449136
+9780679724513
+978-2-07-036024-5
+0-19-853453-1"
+                            required
+                        ></textarea>
+                        <div class="form-text">
+                            ISBN-10 et ISBN-13 acceptés, avec ou sans tirets.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-info text-white w-100">
+                        <i class="bi bi-cloud-download me-1"></i>Lancer l'import
+                    </button>
+                </form>
+            </div>
+            <div class="card-footer bg-light">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Les ISBN déjà présents dans le catalogue sont automatiquement ignorés (aucun écrasement).
+                    Un ISBN inconnu sur Open Library est signalé dans le rapport ci-dessous.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    {# Rapport d'import #}
+    <div class="col-lg-7">
+        <div class="card shadow-sm border h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h2 class="h5 fw-bold mb-0">
+                    <i class="bi bi-clipboard-data me-2 text-primary"></i>Rapport d'import
+                </h2>
+                {% if results|length > 0 %}
+                    <div class="d-flex gap-2">
+                        {% set created = results|filter(r => r.isCreated())|length %}
+                        {% set skipped = results|filter(r => r.isSkipped())|length %}
+                        {% set failed  = results|filter(r => r.isFailed())|length %}
+                        {% if created > 0 %}
+                            <span class="badge bg-success">{{ created }} créé(s)</span>
+                        {% endif %}
+                        {% if skipped > 0 %}
+                            <span class="badge bg-warning text-dark">{{ skipped }} ignoré(s)</span>
+                        {% endif %}
+                        {% if failed > 0 %}
+                            <span class="badge bg-danger">{{ failed }} échec(s)</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if results|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ISBN</th>
+                                    <th>Titre créé</th>
+                                    <th>Statut</th>
+                                    <th>Détail</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                    <tr class="{{ result.isFailed() ? 'table-danger' : (result.isSkipped() ? 'table-warning' : '') }}">
+                                        <td><code>{{ result.isbn }}</code></td>
+                                        <td>
+                                            {% if result.title %}
+                                                <strong>{{ result.title }}</strong>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ result.badgeClass() }}">
+                                                <i class="bi {{ result.icon() }} me-1"></i>{{ result.label() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if result.message %}
+                                                <small class="text-muted">{{ result.message }}</small>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
+                        <i class="bi bi-clipboard fs-1 mb-3 opacity-25"></i>
+                        <p class="mb-0">Le rapport apparaîtra ici après l'import.</p>
+                        <small>Saisissez des ISBN dans le formulaire et cliquez sur « Lancer l'import ».</small>
+                    </div>
+                {% endif %}
+            </div>
+            {% if results|length > 0 %}
+                <div class="card-footer bg-light">
+                    {% set createdItems = results|filter(r => r.isCreated()) %}
+                    {% if createdItems|length > 0 %}
+                        <small class="text-success fw-semibold">
+                            <i class="bi bi-check-circle-fill me-1"></i>
+                            Les nouvelles fiches sont visibles dans le
+                            <a href="{{ path('app_catalog') }}">catalogue public</a>
+                            et dans le <a href="{{ path('admin') }}">back-office</a>.
+                            Pensez à ajouter les exemplaires physiques !
+                        </small>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# Aide rapide #}
+<div class="card mt-4 border-0 bg-light">
+    <div class="card-body">
+        <h3 class="h6 fw-bold mb-2"><i class="bi bi-question-circle me-1 text-secondary"></i>Comment ça fonctionne ?</h3>
+        <div class="row g-3">
+            <div class="col-md-3 text-center">
+                <div class="fs-3 mb-1">1️⃣</div>
+                <strong>Saisie</strong>
+                <p class="small text-muted mb-0">Collez vos ISBN (ISBN-10 ou ISBN-13, avec ou sans tirets)</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <div class="fs-3 mb-1">2️⃣</div>
+                <strong>Vérification locale</strong>
+                <p class="small text-muted mb-0">Les ISBN déjà dans le catalogue sont ignorés sans appel réseau</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <div class="fs-3 mb-1">3️⃣</div>
+                <strong>Open Library</strong>
+                <p class="small text-muted mb-0">Les nouveaux ISBN sont interrogés sur Open Library (source ouverte, gratuite)</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <div class="fs-3 mb-1">4️⃣</div>
+                <strong>Ajout exemplaires</strong>
+                <p class="small text-muted mb-0">Après import, ajoutez les exemplaires physiques dans le back-office</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

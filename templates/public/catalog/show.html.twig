@@ -1,0 +1,157 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ edition.work.title }} — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<nav aria-label="breadcrumb" class="mb-4 pt-2">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{{ path('app_home') }}" class="text-decoration-none text-muted">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{{ path('app_catalog') }}" class="text-decoration-none text-muted">Catalogue</a></li>
+        <li class="breadcrumb-item active text-dark fw-semibold">{{ edition.work.title }}</li>
+    </ol>
+</nav>
+
+{# Fiche d'information #}
+<div class="card shadow-sm border mb-4" style="border-color: var(--emc-border) !important; border-radius: 14px;">
+    <div class="card-body p-4 p-md-5">
+        <div class="row g-4 align-items-start">
+            {% if edition.coverUrl %}
+                <div class="col-md-3 text-center">
+                    <img src="{{ edition.coverUrl }}" alt="Couverture de {{ edition.work.title }}" class="img-fluid rounded-3 shadow-sm border" style="max-height: 280px; object-fit: cover;">
+                </div>
+            {% endif %}
+            <div class="{{ edition.coverUrl ? 'col-md-9' : 'col-12' }}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge-type">{{ edition.type.label }}</span>
+                </div>
+                <h1 class="h2 fw-bold mb-3" style="font-family: var(--emc-font-serif);">{{ edition.work.title }}</h1>
+
+                <div class="row g-3 py-3 border-top border-bottom my-3" style="border-color: var(--emc-border-subtle) !important;">
+                    <div class="col-sm-4">
+                        <span class="text-muted small d-block">Éditeur</span>
+                        <strong>{{ edition.publisher ?? 'Non renseigné' }}</strong>
+                    </div>
+                    <div class="col-sm-4">
+                        <span class="text-muted small d-block">Année de publication</span>
+                        <strong>{{ edition.publicationYear ?? 'Non renseignée' }}</strong>
+                    </div>
+                    <div class="col-sm-4">
+                        <span class="text-muted small d-block">Code ISBN</span>
+                        <code>{{ edition.isbn }}</code>
+                    </div>
+                </div>
+
+                {% if edition.contributions|length > 0 %}
+                    <div class="small text-muted">
+                        <strong>Auteurs / Contributeurs :</strong>
+                        {% for link in edition.contributions %}
+                            <span class="badge bg-light text-dark border me-1">{{ link.contributor.name }} ({{ link.role.label }})</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Bloc Réservation #}
+<div class="card shadow-sm border mb-5" style="border-color: var(--emc-border) !important; border-radius: 14px;">
+    <div class="card-header bg-white py-3 border-bottom" style="border-color: var(--emc-border-subtle) !important;">
+        <h2 class="h5 fw-bold mb-0" style="font-family: var(--emc-font-serif);">
+            <i class="bi bi-bookmark-plus me-2 text-dark"></i>Réserver ce document
+        </h2>
+    </div>
+    <div class="card-body p-4">
+        {% if is_granted('ROLE_MEMBER') %}
+            <p class="text-muted small mb-3">
+                Vous pouvez réserver ce document pour le retirer dans la médiathèque de votre choix. Si l'exemplaire se trouve dans l'autre médiathèque, un transfert sera automatiquement déclenché par navette.
+            </p>
+            <form method="post" action="{{ path('app_catalog_reserve', {id: edition.id}) }}" class="row g-3 align-items-end">
+                <input type="hidden" name="_token" value="{{ csrf_token('reserve_' ~ edition.id) }}">
+                <div class="col-md-7">
+                    <label for="pickupSite" class="form-label fw-semibold small text-muted">Médiathèque de retrait souhaitée :</label>
+                    <select id="pickupSite" name="site_id" class="form-select" required>
+                        {% for site in sites %}
+                            <option value="{{ site.id }}">{{ site.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <button type="submit" class="btn btn-emc-navy w-100">
+                        <i class="bi bi-check2-circle me-1"></i>Confirmer ma réservation
+                    </button>
+                </div>
+            </form>
+        {% elseif app.user %}
+            <div class="alert alert-info mb-0 border-0 rounded-3">
+                <i class="bi bi-info-circle me-2"></i>Votre compte actuel ne dispose pas d'un profil adhérent pour effectuer des réservations.
+            </div>
+        {% else %}
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                    <h3 class="h6 fw-bold mb-1">Envie d'emprunter ou de réserver ce document ?</h3>
+                    <div class="text-muted small">Connectez-vous avec votre compte adhérent pour accéder à la réservation en ligne.</div>
+                </div>
+                <a href="{{ path('app_login') }}" class="btn btn-emc-navy btn-emc-pill px-4">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Se connecter pour réserver
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{# Liste des exemplaires physiques #}
+<div class="mb-5">
+    <h2 class="h4 fw-bold mb-3" style="font-family: var(--emc-font-serif);">
+        <i class="bi bi-geo-alt me-2 text-dark"></i>Exemplaires physiques par site
+    </h2>
+    <div class="card shadow-sm border" style="border-color: var(--emc-border) !important; border-radius: 12px; overflow: hidden;">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase" style="letter-spacing: 0.05em;">
+                    <tr>
+                        <th class="ps-4">Code-barres</th>
+                        <th>Site de rattachement</th>
+                        <th class="pe-4 text-end">Disponibilité</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for copy in edition.copies %}
+                        <tr>
+                            <td class="ps-4"><code class="text-dark fw-semibold">{{ copy.barcode }}</code></td>
+                            <td>
+                                <i class="bi bi-building me-1 text-muted"></i>
+                                <strong>{{ copy.site.name }}</strong>
+                            </td>
+                            <td class="pe-4 text-end">
+                                {% if copy.status.value == 'available' %}
+                                    <span class="badge-status badge-available">
+                                        <span class="status-dot"></span>Disponible en rayon
+                                    </span>
+                                {% elseif copy.status.value == 'borrowed' %}
+                                    <span class="badge-status badge-unavailable">
+                                        <span class="status-dot"></span>{{ copy.status.label }}
+                                    </span>
+                                {% elseif copy.status.value == 'reserved' %}
+                                    <span class="badge bg-warning text-dark">{{ copy.status.label }}</span>
+                                {% elseif copy.status.value == 'in_transit' %}
+                                    <span class="badge bg-primary text-white">{{ copy.status.label }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ copy.status.label }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-4 d-block mb-1 text-muted"></i>
+                                Aucun exemplaire inventorié pour le moment dans les rayons.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

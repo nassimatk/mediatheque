@@ -1,0 +1,389 @@
+/* ==========================================================================
+   Thème Médiathèques EMC — Style éditorial élégant & chaleureux
+   Inspiré du portail de lecture publique moderne (ton papier chaud & serif)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+    --emc-bg: #fbf9f5;
+    --emc-bg-card: #ffffff;
+    --emc-bg-warm: #f3efe6;
+    --emc-bg-warm-light: #f7f4ee;
+    --emc-border: #eae4d9;
+    --emc-border-subtle: #f0ece3;
+    --emc-navy: #111822;
+    --emc-navy-hover: #1e293b;
+    --emc-navy-light: #182232;
+    --emc-text-heading: #141b24;
+    --emc-text-body: #475569;
+    --emc-text-muted: #78716c;
+    --emc-font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --emc-font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+body {
+    background-color: var(--emc-bg) !important;
+    font-family: var(--emc-font-sans) !important;
+    color: var(--emc-text-body) !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Typographie éditoriale */
+.font-serif,
+h1, h2, h3, .h1, .h2, .h3,
+.hero-title, .section-title, .book-card-title {
+    font-family: var(--emc-font-serif) !important;
+    color: var(--emc-text-heading) !important;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+/* Barre de navigation */
+.navbar-emc {
+    background-color: var(--emc-navy) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+.navbar-emc .navbar-brand {
+    font-family: var(--emc-font-sans);
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+    color: #ffffff !important;
+}
+
+.navbar-emc .nav-link {
+    color: #cbd5e1 !important;
+    font-weight: 500;
+    font-size: 0.92rem;
+    padding-left: 0.9rem !important;
+    padding-right: 0.9rem !important;
+    transition: color 0.15s ease-in-out;
+}
+
+.navbar-emc .nav-link:hover,
+.navbar-emc .nav-link.active {
+    color: #ffffff !important;
+}
+
+.navbar-emc .btn-nav-auth {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 50px;
+    padding: 0.4rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.navbar-emc .btn-nav-auth:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Badges & Kickers */
+.badge-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 50px;
+    background-color: var(--emc-bg-warm);
+    border: 1px solid var(--emc-border);
+    color: #574f41;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.badge-type {
+    display: inline-block;
+    padding: 0.25rem 0.65rem;
+    border-radius: 50px;
+    background-color: var(--emc-bg-warm);
+    border: 1px solid var(--emc-border);
+    color: #574f41;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 50px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.badge-status .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.badge-status.badge-available {
+    background-color: #ecfdf5;
+    border: 1px solid #d1fae5;
+    color: #065f46;
+}
+.badge-status.badge-available .status-dot {
+    background-color: #10b981;
+}
+
+.badge-status.badge-unavailable {
+    background-color: #fef2f2;
+    border: 1px solid #fee2e2;
+    color: #991b1b;
+}
+.badge-status.badge-unavailable .status-dot {
+    background-color: #ef4444;
+}
+
+/* Hero & Search */
+.hero-container {
+    padding-top: 3.5rem;
+    padding-bottom: 3rem;
+}
+
+.hero-title {
+    font-size: 2.85rem;
+    line-height: 1.18;
+    margin-bottom: 1.1rem;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: var(--emc-text-muted);
+    max-width: 680px;
+    margin: 0 auto 2rem auto;
+    line-height: 1.6;
+}
+
+.hero-search-card {
+    background: #ffffff;
+    border: 1px solid var(--emc-border);
+    border-radius: 12px;
+    padding: 0.45rem 0.45rem 0.45rem 1.25rem;
+    box-shadow: 0 4px 20px -2px rgba(20, 27, 36, 0.05);
+    max-width: 780px;
+    margin: 0 auto;
+}
+
+.hero-search-input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 0.98rem;
+    background: transparent;
+    color: var(--emc-text-heading);
+}
+
+.hero-search-input::placeholder {
+    color: #94a3b8;
+}
+
+.btn-emc-navy {
+    background-color: var(--emc-navy) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--emc-navy) !important;
+    border-radius: 8px;
+    padding: 0.65rem 1.4rem;
+    font-weight: 600;
+    font-size: 0.92rem;
+    transition: all 0.2s ease;
+}
+
+.btn-emc-navy:hover {
+    background-color: var(--emc-navy-hover) !important;
+    border-color: var(--emc-navy-hover) !important;
+    box-shadow: 0 4px 12px rgba(17, 24, 34, 0.15);
+}
+
+.btn-emc-pill {
+    border-radius: 50px !important;
+}
+
+.hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.hero-pill-item {
+    background-color: #ede8dc;
+    border: 1px solid var(--emc-border);
+    border-radius: 50px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #574f41;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.hero-pill-item:hover {
+    background-color: #e2ddd0;
+    color: #292524;
+}
+
+/* Cartes de documents (Dernières acquisitions) */
+.emc-book-card {
+    background: #ffffff;
+    border: 1px solid var(--emc-border);
+    border-radius: 12px;
+    padding: 1.35rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.emc-book-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(20, 27, 36, 0.08);
+    border-color: #d8d0c2;
+}
+
+.emc-book-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.9rem;
+}
+
+.emc-book-title {
+    font-family: var(--emc-font-serif);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--emc-text-heading);
+    margin-bottom: 0.75rem;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.emc-book-title a {
+    color: inherit;
+    text-decoration: none;
+}
+.emc-book-title a:hover {
+    color: #0284c7;
+}
+
+.emc-book-meta {
+    font-size: 0.82rem;
+    color: var(--emc-text-muted);
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.emc-book-meta .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.emc-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.55rem 1rem;
+    background: transparent;
+    border: 1px solid #111822;
+    border-radius: 8px;
+    color: #111822;
+    font-weight: 600;
+    font-size: 0.84rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.emc-btn-outline:hover {
+    background: #111822;
+    color: #ffffff;
+}
+
+/* Section Médiathèques de quartier */
+.sites-section {
+    background-color: var(--emc-bg-warm);
+    border: 1px solid var(--emc-border);
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
+    margin-top: 4rem;
+    margin-bottom: 3.5rem;
+}
+
+.site-card {
+    background: #ffffff;
+    border: 1px solid var(--emc-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+.services-dark-card {
+    background: var(--emc-navy-light);
+    border-radius: 12px;
+    padding: 1.75rem;
+    color: #f1f5f9;
+}
+
+.services-dark-card .service-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin-top: 1rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.services-dark-card .service-icon {
+    font-size: 1.15rem;
+    color: #38bdf8;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+/* Bannière Adhérent (CTA) */
+.cta-banner {
+    background: #ffffff;
+    border: 1px solid var(--emc-border);
+    border-radius: 14px;
+    padding: 2.25rem 2.5rem;
+    margin-bottom: 3rem;
+}
+
+/* Footer EMC */
+.footer-emc {
+    background-color: var(--emc-navy) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    margin-top: auto;
+}
+
+.footer-emc a {
+    color: #cbd5e1;
+    text-decoration: none;
+}
+.footer-emc a:hover {
+    color: #ffffff;
+}

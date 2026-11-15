@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Copy;
 use App\Entity\Edition;
 use App\Entity\Member;
 use App\Entity\Reservation;
@@ -38,15 +39,17 @@ class ReservationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Retourne la prochaine réservation Pending pour une édition (ordre FIFO par createdAt).
-     * Utilisé par LoanService::return() pour notifier l'adhérent suivant.
+     * Retourne la prochaine réservation Pending sans exemplaire attribué pour une édition (ordre FIFO).
+     * Les réservations déjà en transit (qui ont déjà un copy IS NOT NULL) sont ignorées.
      */
     public function findNextPendingForEdition(Edition $edition): ?Reservation
     {
         return $this->createQueryBuilder('r')
             ->where('r.edition = :edition')
             ->andWhere('r.status = :status')
+            ->andWhere('r.copy IS NULL')
             ->orderBy('r.createdAt', 'ASC')
+            ->addOrderBy('r.id', 'ASC')
             ->setMaxResults(1)
             ->setParameter('edition', $edition)
             ->setParameter('status', ReservationStatus::Pending)
@@ -69,5 +72,50 @@ class ReservationRepository extends ServiceEntityRepository
             ->setParameter('statuses', [ReservationStatus::Pending, ReservationStatus::Ready])
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * Réservation "Ready" actuellement attribuée à un exemplaire précis.
+     */
+    public function findReadyReservationForCopy(Copy $copy): ?Reservation
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.copy = :copy')
+            ->andWhere('r.status = :status')
+            ->setParameter('copy', $copy)
+            ->setParameter('status', ReservationStatus::Ready)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Réservation active (Pending ou Ready) associée à un exemplaire.
+     */
+    public function findActiveReservationForCopy(Copy $copy): ?Reservation
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.copy = :copy')
+            ->andWhere('r.status IN (:statuses)')
+            ->setParameter('copy', $copy)
+            ->setParameter('statuses', [ReservationStatus::Pending, ReservationStatus::Ready])
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Liste des réservations prêtes dont la date limite de retrait est dépassée.
+     *
+     * @return Reservation[]
+     */
+    public function findOutdatedReadyReservations(\DateTimeImmutable $now): array
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.status = :status')
+            ->andWhere('r.holdUntil IS NOT NULL')
+            ->andWhere('r.holdUntil < :now')
+            ->setParameter('status', ReservationStatus::Ready)
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
     }
 }

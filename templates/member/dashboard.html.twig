@@ -1,0 +1,187 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mon Espace Adhérent — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="row g-4 mb-4">
+    <div class="col-md-12">
+        <div class="card bg-primary text-white p-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 fw-bold mb-1">Bonjour, {{ member.fullName }}</h1>
+                    <p class="mb-0 opacity-75">
+                        Carte n° <strong>{{ member.cardNumber }}</strong> &bull; Formule : <strong>{{ member.plan.name }}</strong>
+                    </p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-light text-dark fs-6">
+                        {{ openLoans|length }} / {{ member.plan.maxLoans }} prêts en cours
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Prêts en cours #}
+<div class="card shadow-sm border mb-4">
+    <div class="card-header bg-white py-3">
+        <h2 class="h5 fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Mes prêts en cours</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Document</th>
+                    <th>Emprunté le</th>
+                    <th>À rendre avant le</th>
+                    <th>Prolongations</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in openLoans %}
+                    {% set isLate = loan.dueAt < date() %}
+                    <tr class="{{ isLate ? 'table-danger' : '' }}">
+                        <td>
+                            <strong>{{ loan.copy.edition.work.title }}</strong><br>
+                            <small class="text-muted">{{ loan.copy.edition.publisher }} ({{ loan.copy.barcode }})</small>
+                        </td>
+                        <td>{{ loan.borrowedAt|date('d/m/Y') }}</td>
+                        <td>
+                            <span class="fw-bold {{ isLate ? 'text-danger' : 'text-success' }}">
+                                {{ loan.dueAt|date('d/m/Y') }}
+                            </span>
+                            {% if isLate %}
+                                <span class="badge bg-danger ms-1">En retard</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ loan.renewalCount }} / {{ member.plan.maxRenewals }}</td>
+                        <td class="text-end">
+                            {% if loan.renewalCount < member.plan.maxRenewals and not isLate %}
+                                <form method="post" action="{{ path('app_member_renew_loan', {id: loan.id}) }}" class="d-inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('renew_' ~ loan.id) }}">
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>Prolonger
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="text-muted small">Non prolongeable</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            Vous n'avez aucun prêt en cours actuellement.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Réservations #}
+<div class="card shadow-sm border mb-4">
+    <div class="card-header bg-white py-3">
+        <h2 class="h5 fw-bold mb-0"><i class="bi bi-bookmark-check me-2 text-primary"></i>Mes réservations</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Document</th>
+                    <th>Site de retrait</th>
+                    <th>Demandée le</th>
+                    <th>Statut</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in reservations %}
+                    <tr>
+                        <td><strong>{{ res.edition.work.title }}</strong></td>
+                        <td>{{ res.pickupSite.name }}</td>
+                        <td>{{ res.createdAt|date('d/m/Y') }}</td>
+                        <td>
+                            {% if res.status.value == 'ready' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-bell-fill me-1"></i>Prête à retirer !
+                                </span>
+                                {% if res.holdUntil %}
+                                    <br><small class="text-muted">Jusqu'au {{ res.holdUntil|date('d/m/Y') }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">En attente d'un retour</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <form method="post" action="{{ path('app_member_cancel_reservation', {id: res.id}) }}" class="d-inline" onsubmit="return confirm('Confirmez-vous l\'annulation de cette réservation ?');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('cancel_res_' ~ res.id) }}">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">
+                                    <i class="bi bi-x-circle me-1"></i>Annuler
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            Aucune réservation active.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Historique des prêts #}
+<div class="card shadow-sm border">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h2 class="h5 fw-bold mb-0"><i class="bi bi-archive me-2 text-primary"></i>Historique de mes prêts</h2>
+        <span class="badge bg-secondary">{{ closedLoans|length }} prêts passés</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Document</th>
+                    <th>Emprunté le</th>
+                    <th>Rendu le</th>
+                    <th>Délai initial</th>
+                    <th>Statut retour</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in closedLoans %}
+                    {% set returnedLate = loan.closedAt > loan.dueAt %}
+                    <tr>
+                        <td>
+                            <strong>{{ loan.copy.edition.work.title }}</strong><br>
+                            <small class="text-muted">{{ loan.copy.edition.publisher }} ({{ loan.copy.barcode }})</small>
+                        </td>
+                        <td>{{ loan.borrowedAt|date('d/m/Y') }}</td>
+                        <td>{{ loan.closedAt|date('d/m/Y') }}</td>
+                        <td>{{ loan.dueAt|date('d/m/Y') }}</td>
+                        <td>
+                            {% if returnedLate %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle me-1"></i>Avec retard</span>
+                            {% else %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>À l'heure</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            Aucun historique de prêt archivé pour le moment.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

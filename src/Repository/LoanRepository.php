@@ -46,4 +46,32 @@ class LoanRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Prêts passés (historique clôturé) pour un adhérent.
+     *
+     * @return Loan[]
+     */
+    public function findClosedLoansForMember(Member $member, int $limit = 50): array
+    {
+        return $this->createQueryBuilder('l')
+            ->where('l.member = :member')
+            ->andWhere('l.closedAt IS NOT NULL')
+            ->orderBy('l.closedAt', 'DESC')
+            ->setParameter('member', $member)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Nombre total de prêts enregistrés dans l'application.
+     */
+    public function countTotalLoans(): int
+    {
+        return (int) $this->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

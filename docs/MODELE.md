@@ -18,7 +18,15 @@ erDiagram
     EDITION ||--o{ RESERVATION : "est réservée"
     SITE ||--o{ RESERVATION : "site de retrait"
     LOAN ||--o{ PENALTY : "génère"
+    USER ||--o| MEMBER : "est associé à"
 
+    USER {
+        int id PK
+        int member_id FK
+        string email UK
+        json roles
+        string password
+    }
     SITE {
         int id PK
         string name UK
@@ -100,7 +108,7 @@ erDiagram
     }
 ```
 
-Le compte de connexion (`User`, rôles adhérent / bibliothécaire / administrateur) sera ajouté au niveau 3.
+Le compte de connexion (`User`) assure l'authentification et porte les rôles de sécurité (`ROLE_ADMIN`, `ROLE_LIBRARIAN`, `ROLE_MEMBER`), avec un lien optionnel vers la fiche adhérent (`Member`).
 
 ## 2. Comment lire ce modèle
 
@@ -134,10 +142,17 @@ MySQL ne sait pas déclarer « un seul prêt ouvert par exemplaire » avec une s
 ### 3.7 Les règles métier vivent dans les services
 Les entités décrivent les données ; les règles (limites de prêts, file d'attente, prolongation, pénalités) sont dans `src/Service/`. Les limites elles-mêmes (nombre de prêts, durée, prolongations, tarif de pénalité) sont dans `SubscriptionPlan`, donc modifiables sans toucher au code.
 
+### 3.8 Compte d'accès (User) et profil adhérent (Member)
+La sécurité et le domaine métier sont strictement séparés :
+- `User` représente le **compte d'authentification** géré par Symfony Security : email unique, mot de passe haché (bcrypt/auto) et rôles applicatifs (`ROLE_ADMIN`, `ROLE_LIBRARIAN`, `ROLE_MEMBER`).
+- `Member` représente la **fiche métier de l'adhérent** dans le réseau : numéro de carte de lecteur, formule d'abonnement souscrite, historique des prêts et réservations.
+- Une relation OneToOne optionnelle relie `User` à `Member` (`member_id` nullable). Un compte adhérent pointe vers sa fiche `Member` (lui donnant accès à son espace personnel), tandis qu'un bibliothécaire ou un administrateur peut posséder un compte `User` sans être rattaché à une fiche adhérent physique.
+
 ## 4. Glossaire
 
 | Français | Code |
 |---|---|
+| Compte utilisateur (sécurité) | `User` |
 | Médiathèque (site) | `Site` |
 | Œuvre | `Work` |
 | Édition | `Edition` |
@@ -151,6 +166,7 @@ Les entités décrivent les données ; les règles (limites de prêts, file d'at
 | Pénalité | `Penalty` |
 
 ## 5. Limites connues
-- Pas d'historique des transferts d'exemplaires.
-- Pas de paiement en ligne des pénalités : le montant et la date de paiement sont enregistrés.
-- Pas d'envoi d'e-mails : les notifications passent par le statut de la réservation, consultable par l'adhérent.
+- Pas d'historique archivé des transferts d'exemplaires : seul l'état instantané (`site` actuel et `destinationSite` en cours de navette) est tracé.
+- Pas de paiement en ligne par carte bancaire : les pénalités sont calculées automatiquement et leur acquittement est enregistré manuellement au comptoir.
+- Pas d'envoi d'e-mails (serveur SMTP absent en environnement local) : la notification de disponibilité est directement matérialisée par le statut `Ready` visible dans l'espace adhérent.
+- Taux de rotation calculé sur le cumul global des prêts divisé par le nombre total d'exemplaires du parc.

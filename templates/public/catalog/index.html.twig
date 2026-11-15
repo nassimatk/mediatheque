@@ -1,0 +1,103 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Catalogue — Médiathèques EMC{% endblock %}
+
+{% block body %}
+<div class="mb-5 pt-3">
+    <div class="badge-kicker mb-2">
+        <i class="bi bi-book"></i> Fonds documentaire
+    </div>
+    <h1 class="h2 fw-bold mb-3">Rechercher dans le catalogue</h1>
+    
+    {# Formulaire de filtre & recherche #}
+    <form method="get" class="row g-3 bg-white p-3 p-md-4 rounded-3 shadow-sm border" style="border-color: var(--emc-border) !important;">
+        <div class="col-md-7">
+            <label class="form-label small fw-semibold text-muted">Mots-clés</label>
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-end-0 text-muted">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" name="q" class="form-control border-start-0" placeholder="Titre, auteur, éditeur, ISBN..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold text-muted">Type de document</label>
+            <select name="type" class="form-select">
+                <option value="">Tous les types</option>
+                <option value="book" {{ type == 'book' ? 'selected' : '' }}>Livre</option>
+                <option value="comic" {{ type == 'comic' ? 'selected' : '' }}>Bande dessinée</option>
+                <option value="dvd" {{ type == 'dvd' ? 'selected' : '' }}>DVD</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-grid align-self-end">
+            <button type="submit" class="btn btn-emc-navy">
+                <i class="bi bi-funnel me-1"></i>Filtrer
+            </button>
+        </div>
+    </form>
+</div>
+
+{# Grille de résultats #}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+    {% for edition in editions %}
+        <div class="col">
+            <div class="emc-book-card">
+                <div>
+                    <div class="emc-book-card-header">
+                        <span class="badge-type">{{ edition.type.label }}</span>
+                        {% set dispoCount = 0 %}
+                        {% for c in edition.copies %}
+                            {% if c.status.value == 'available' %}
+                                {% set dispoCount = dispoCount + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if dispoCount > 0 %}
+                            <span class="badge-status badge-available">
+                                <span class="status-dot"></span>{{ dispoCount }} dispo
+                            </span>
+                        {% else %}
+                            <span class="badge-status badge-unavailable">
+                                <span class="status-dot"></span>Non disponible
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <h3 class="emc-book-title">
+                        <a href="{{ path('app_catalog_show', {id: edition.id}) }}">
+                            {{ edition.work.title }}
+                        </a>
+                    </h3>
+
+                    <div class="emc-book-meta">
+                        <div class="meta-row">
+                            <span>Éditeur :</span>
+                            <strong>{{ edition.publisher ?? 'N.C.' }} ({{ edition.publicationYear ?? 'N.C.' }})</strong>
+                        </div>
+                        <div class="meta-row">
+                            <span>ISBN :</span>
+                            <code>{{ edition.isbn }}</code>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <a href="{{ path('app_catalog_show', {id: edition.id}) }}" class="emc-btn-outline">
+                        <i class="bi bi-info-circle me-1"></i>Détails & Disponibilité
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-warning border-0 shadow-sm rounded-3 py-4 text-center">
+                <i class="bi bi-search fs-3 d-block mb-2 text-muted"></i>
+                <h4 class="h5 fw-bold">Aucun document ne correspond à vos critères</h4>
+                <p class="text-muted small mb-3">Essayez d'autres mots-clés ou réinitialisez les filtres.</p>
+                <a href="{{ path('app_catalog') }}" class="btn btn-sm btn-outline-dark">
+                    Réinitialiser la recherche
+                </a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -12,6 +12,7 @@ use App\Entity\Penalty;
 use App\Entity\Reservation;
 use App\Entity\Site;
 use App\Entity\SubscriptionPlan;
+use App\Entity\User;
 use App\Entity\Work;
 use App\Enum\ContributorRole;
 use App\Enum\CopyStatus;
@@ -21,9 +22,14 @@ use App\Enum\ReservationStatus;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class AppFixtures extends Fixture
 {
+    public function __construct(
+        private readonly UserPasswordHasherInterface $hasher,
+    ) {}
+
     public function load(ObjectManager $manager): void
     {
         $faker = Factory::create('fr_FR');
@@ -282,7 +288,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Inception (Édition Spéciale DVD)',
-                        'isbn' => '5051889045763',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'Warner Home Video',
                         'year' => 2010,
@@ -297,7 +303,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Interstellar (DVD)',
-                        'isbn' => '5051889476215',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'Paramount',
                         'year' => 2015,
@@ -312,7 +318,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Le Voyage de Chihiro (Studio Ghibli)',
-                        'isbn' => '3388330035037',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'Walt Disney Studios',
                         'year' => 2002,
@@ -327,7 +333,7 @@ class AppFixtures extends Fixture
                 'editions' => [
                     [
                         'title' => 'Parasite (Palme d’Or 2019)',
-                        'isbn' => '3512392523293',
+                        'isbn' => null,
                         'type' => EditionType::Dvd,
                         'publisher' => 'The Jokers',
                         'year' => 2019,
@@ -415,7 +421,7 @@ class AppFixtures extends Fixture
                 $edition = (new Edition())
                     ->setWork($work)
                     ->setTitle($edTitle)
-                    ->setIsbn($faker->isbn13())
+                    ->setIsbn($type === EditionType::Dvd ? null : $faker->isbn13())
                     ->setType($type)
                     ->setPublisher($faker->randomElement($publishers[$type->value]))
                     ->setPublicationYear($faker->numberBetween(1990, 2025));
@@ -610,6 +616,22 @@ class AppFixtures extends Fixture
         // ==========================================
         // 6. RÉSERVATIONS
         // ==========================================
+        // Cohérence métier : s'assurer que tous les exemplaires de l'édition 0 (Le Petit Prince)
+        // sont empruntés, justifiant la file d'attente FIFO (décision Q2)
+        foreach ($allCopies as $copyItem) {
+            if ($copyItem->getEdition() === $allEditions[0] && $copyItem->getStatus() === CopyStatus::Available) {
+                $copyItem->setStatus(CopyStatus::Borrowed);
+                $borrower = $faker->randomElement(array_slice($members, 5));
+                $loanPP = (new Loan())
+                    ->setCopy($copyItem)
+                    ->setMember($borrower)
+                    ->setBorrowedAt($now->sub(new \DateInterval('P4D')))
+                    ->setDueAt($now->add(new \DateInterval('P17D')))
+                    ->setRenewalCount(0);
+                $manager->persist($loanPP);
+            }
+        }
+
         // Réservation 1 : Petit Prince - En attente (Pending) par Member 1 au site Al Amal
         $res1 = (new Reservation())
             ->setMember($members[0])
@@ -643,6 +665,67 @@ class AppFixtures extends Fixture
             $manager->persist($res3);
         }
 
+        // Réservation 4 : Exemplaire en transit inter-sites vers le site de retrait (décision Q2)
+        if (isset($allCopies[$copyCursor])) {
+            $cTransit = $allCopies[$copyCursor++];
+            $cTransit->setSite($siteAlAmal)
+                     ->setStatus(CopyStatus::InTransit)
+                     ->setDestinationSite($siteCentre);
+
+            $transitEdition = $cTransit->getEdition();
+            foreach ($allCopies as $copyItem) {
+                if ($copyItem !== $cTransit && $copyItem->getEdition() === $transitEdition && $copyItem->getStatus() === CopyStatus::Available) {
+                    $copyItem->setStatus(CopyStatus::Borrowed);
+                    $borrower = $faker->randomElement(array_slice($members, 8));
+                    $loanTransit = (new Loan())
+                        ->setCopy($copyItem)
+                        ->setMember($borrower)
+                        ->setBorrowedAt($now->sub(new \DateInterval('P3D')))
+                        ->setDueAt($now->add(new \DateInterval('P18D')))
+                        ->setRenewalCount(0);
+                    $manager->persist($loanTransit);
+                }
+            }
+
+            $res4 = (new Reservation())
+                ->setMember($members[3])
+                ->setEdition($transitEdition)
+                ->setPickupSite($siteCentre)
+                ->setCopy($cTransit)
+                ->setStatus(ReservationStatus::Pending)
+                ->setCreatedAt($now->sub(new \DateInterval('P1D')));
+            $manager->persist($res4);
+        }
+
+        // Comptes utilisateurs de démonstration (admin, bibliothécaire, adhérent)
+        $this->createDemoUsers($manager, $members[0]);
+
         $manager->flush();
+    }
+    // -------------------------------------------------------------------------
+
+    private function createDemoUsers(ObjectManager $manager, Member $adherentMember): void
+    {
+        // Administrateur
+        $admin = new User();
+        $admin->setEmail('admin@mediatheque.ma')
+              ->setRoles(['ROLE_ADMIN'])
+              ->setPassword($this->hasher->hashPassword($admin, 'admin123'));
+        $manager->persist($admin);
+
+        // Bibliothécaire
+        $librarian = new User();
+        $librarian->setEmail('librarian@mediatheque.ma')
+                  ->setRoles(['ROLE_LIBRARIAN'])
+                  ->setPassword($this->hasher->hashPassword($librarian, 'librarian123'));
+        $manager->persist($librarian);
+
+        // Adhérent (lié à la fiche membre fournie)
+        $memberUser = new User();
+        $memberUser->setEmail('adherent@mediatheque.ma')
+                   ->setRoles(['ROLE_MEMBER'])
+                   ->setPassword($this->hasher->hashPassword($memberUser, 'adherent123'))
+                   ->setMember($adherentMember);
+        $manager->persist($memberUser);
     }
 }
