@@ -83,6 +83,9 @@ La base est pré-remplie avec 3 comptes représentatifs des rôles du cahier des
 La totalité des tests unitaires et fonctionnels s'exécute dans l'environnement Docker :
 
 ```bash
+docker compose exec -T php php bin/console doctrine:migrations:migrate --env=test --no-interaction
+docker compose exec -T php php bin/console doctrine:fixtures:load --env=test --no-interaction
+
 docker compose exec -T php php bin/phpunit
 ```
 

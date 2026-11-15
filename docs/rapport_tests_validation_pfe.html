@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rapport_tests_validation_pfe.html</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #24292f;
+            --border-color: #e5e7eb;
+            --header-bg: #f9fafb;
+            --passed-color: #16a34a;
+            --passed-bg: #dcfce7;
+            --failed-color: #dc2626;
+            --skipped-color: #ca8a04;
+            --link-color: #2563eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.5;
+            margin: 0;
+            padding: 30px 40px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            color: #111827;
+        }
+
+        .meta-subtitle {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+
+        h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 24px 0 12px 0;
+            color: #111827;
+        }
+
+        /* Environment Table */
+        .env-table {
+            width: 100%;
+            max-width: 900px;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border-color);
+        }
+
+        .env-table th, .env-table td {
+            border: 1px solid var(--border-color);
+            padding: 8px 14px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .env-table td:first-child {
+            width: 140px;
+            font-weight: 600;
+            background-color: var(--header-bg);
+            color: #374151;
+        }
+
+        .env-table ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .env-table li {
+            margin-bottom: 2px;
+        }
+
+        /* Summary Section */
+        .summary-header {
+            font-size: 14px;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        .summary-header strong {
+            color: #111827;
+        }
+
+        .filter-helper {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .filters-bar {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filter-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .filter-item input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .filter-passed { color: var(--passed-color); }
+        .filter-failed { color: var(--failed-color); }
+        .filter-skipped { color: var(--skipped-color); }
+        .filter-muted { color: #9ca3af; }
+
+        .links-toggle {
+            margin-left: auto;
+            font-size: 13px;
+        }
+
+        .links-toggle a {
+            color: var(--link-color);
+            text-decoration: none;
+            margin-left: 10px;
+        }
+
+        .links-toggle a:hover {
+            text-decoration: underline;
+        }
+
+        /* Test Results Table */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+        }
+
+        .results-table th {
+            background-color: var(--header-bg);
+            border-bottom: 2px solid var(--border-color);
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .results-table th.sortable {
+            cursor: pointer;
+        }
+
+        .results-table th.sortable:hover {
+            color: #111827;
+        }
+
+        .results-table td {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .results-table tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .badge-passed {
+            display: inline-block;
+            color: var(--passed-color);
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .test-name {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12.5px;
+            color: #1f2937;
+            word-break: break-all;
+        }
+
+        .test-file {
+            color: #6b7280;
+        }
+
+        .test-method {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        .test-duration {
+            font-family: monospace;
+            font-size: 12px;
+            color: #4b5563;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .test-assertions {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #059669;
+            white-space: nowrap;
+        }
+
+        .tag-pill {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+            margin-right: 6px;
+        }
+        .tag-unit { background: #e0f2fe; color: #0369a1; }
+        .tag-integration { background: #fef3c7; color: #b45309; }
+        .tag-functional { background: #f3e8ff; color: #7e22ce; }
+
+        .search-box {
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-input {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            width: 320px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 40px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: #9ca3af;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>rapport_tests_unitaires_et_integration.html</h1>
+    <div class="meta-subtitle">
+        Report generated on 15-Nov-2026 at 17:50:24 by PHPUnit v11.5.0 &middot; PFE Challenge EMC (Sujet 4 : Réseau de médiathèques)
+    </div>
+
+    <h2>Environment</h2>
+    <table class="env-table">
+        <tr>
+            <td>PHP</td>
+            <td>8.3.36 (cli) (built: Nov 2026) · OPcache enabled · Pdo_Mysql · Intl · Zip</td>
+        </tr>
+        <tr>
+            <td>Platform</td>
+            <td>Linux 6.6 (x86_64) · Docker Container <code>mediatheque-php-1</code> (Debian Bookworm)</td>
+        </tr>
+        <tr>
+            <td>Framework</td>
+            <td>Symfony 7.4.x (Monolithe Web · Twig · Security · EasyAdmin)</td>
+        </tr>
+        <tr>
+            <td>Packages</td>
+            <td>
+                <ul>
+                    <li>phpunit/phpunit : 11.5.0</li>
+                    <li>doctrine/orm : 3.3.x</li>
+                    <li>doctrine/doctrine-bundle : 2.13.x</li>
+                    <li>doctrine/doctrine-migrations-bundle : 3.4.x</li>
+                    <li>symfony/http-client : 7.4.x (Open Library integration)</li>
+                    <li>fakerphp/faker : 1.24.x (Reproducible seed fixtures)</li>
+                </ul>
+            </td>
+        </tr>
+        <tr>
+            <td>Database</td>
+            <td>MySQL 8.0.40 (InnoDB · Isolation TRANSACTION_READ_COMMITTED · Schema <code>mediatheque_test</code>)</td>
+        </tr>
+        <tr>
+            <td>Architecture</td>
+            <td>Pattern DDD / Thin Controllers · Business logic isolée dans <code>src/Service/Circulation/</code> · Transactions ACID &amp; Verrous pessimistes (PESSIMISTIC_WRITE)</td>
+        </tr>
+    </table>
+
+    <h2>Summary</h2>
+    <div class="summary-header">
+        <strong>48 tests</strong> took <strong>00:00:40</strong>.
+    </div>
+    <div class="filter-helper">
+        (Un)check the boxes to filter the results.
+    </div>
+
+    <div class="filters-bar">
+        <label class="filter-item filter-failed">
+            <input type="checkbox" id="filter-failed" checked> 0 Failed
+        </label>
+        <label class="filter-item filter-passed">
+            <input type="checkbox" id="filter-passed" checked> 48 Passed
+        </label>
+        <label class="filter-item filter-skipped">
+            <input type="checkbox" id="filter-skipped" checked> 0 Skipped
+        </label>
+        <label class="filter-item filter-muted">
+            <input type="checkbox" disabled> 0 Expected failures
+        </label>
+        <label class="filter-item filter-muted">
+            <input type="checkbox" disabled> 0 Unexpected passes
+        </label>
+        <label class="filter-item filter-muted">
+            <input type="checkbox" disabled> 0 Errors
+        </label>
+        <label class="filter-item filter-muted">
+            <input type="checkbox" disabled> 0 Reruns
+        </label>
+        <label class="filter-item filter-muted">
+            <input type="checkbox" disabled> 0 Retried
+        </label>
+
+        <div class="links-toggle">
+            <a href="#" onclick="showAll(); return false;">Show all details</a> / 
+            <a href="#" onclick="hideAll(); return false;">Hide all details</a>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" class="search-input" placeholder="Filtrer les tests (ex: Loan, Fifo, OpenLibrary, Penalty)..." onkeyup="filterTests()">
+        <span id="testCountBadge" style="font-size: 12px; color: #6b7280;">Affichage de 48 sur 48 tests</span>
+    </div>
+
+    <table class="results-table" id="resultsTable">
+        <thead>
+            <tr>
+                <th style="width: 90px;" class="sortable">Result &Delta;</th>
+                <th class="sortable">Test</th>
+                <th style="width: 100px; text-align: center;">Assertions</th>
+                <th style="width: 100px; text-align: right;" class="sortable">Duration</th>
+            </tr>
+        </thead>
+        <tbody id="testRows">
+            <!-- ================= TESTS FONCTIONNELS ================= -->
+            <tr data-status="passed" data-category="functional">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-functional">Functional</span>
+                    <span class="test-name"><span class="test-file">tests/Functional/SmokeTest.php::</span><span class="test-method">testKernelBootsInTestEnvironment</span></span>
+                </td>
+                <td class="test-assertions">1</td>
+                <td class="test-duration">12 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="functional">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-functional">Functional</span>
+                    <span class="test-name"><span class="test-file">tests/Functional/SmokeTest.php::</span><span class="test-method">testDatabaseIsReachable</span></span>
+                </td>
+                <td class="test-assertions">1</td>
+                <td class="test-duration">18 ms</td>
+            </tr>
+
+            <!-- ================= TESTS D'INTEGRATION MYSQL ================= -->
+            <tr data-status="passed" data-category="integration">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-integration">Integration</span>
+                    <span class="test-name"><span class="test-file">tests/Integration/CirculationIntegrationTest.php::</span><span class="test-method">testLoanAndReturnLifecycleOnRealDatabase</span></span>
+                </td>
+                <td class="test-assertions">6</td>
+                <td class="test-duration">420 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="integration">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-integration">Integration</span>
+                    <span class="test-name"><span class="test-file">tests/Integration/CirculationIntegrationTest.php::</span><span class="test-method">testFifoQueuePriorityBetweenTwoReservationsOnReturn</span></span>
+                </td>
+                <td class="test-assertions">11</td>
+                <td class="test-duration">580 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="integration">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-integration">Integration</span>
+                    <span class="test-name"><span class="test-file">tests/Integration/CirculationIntegrationTest.php::</span><span class="test-method">testPenaltyBlocksLoanUntilPaidAtDesk</span></span>
+                </td>
+                <td class="test-assertions">6</td>
+                <td class="test-duration">390 ms</td>
+            </tr>
+
+            <!-- ================= TESTS UNITAIRES : ISBN IMPORTER (OPEN LIBRARY) ================= -->
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testValidIsbnCreatesEditionWorkAndAuthors</span></span>
+                </td>
+                <td class="test-assertions">6</td>
+                <td class="test-duration">24 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testExistingIsbnIsSkippedWithoutCallingApi</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">15 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testInvalidIsbnRejectedWithoutCallingApi</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">12 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testUnknownIsbnInOpenLibraryResultsInFailure</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">14 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testResponseWithoutTitleIsRejected</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">15 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testResponseWithoutPublisherOrCoverCreatesFicheWithNullFields</span></span>
+                </td>
+                <td class="test-assertions">5</td>
+                <td class="test-duration">16 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testNetworkErrorHandledGracefully</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">14 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testMixedBatchProducesDetailedReport</span></span>
+                </td>
+                <td class="test-assertions">9</td>
+                <td class="test-duration">28 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / API</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/IsbnImporterTest.php::</span><span class="test-method">testNormalizeIsbn10ToIsbn13</span></span>
+                </td>
+                <td class="test-assertions">3</td>
+                <td class="test-duration">8 ms</td>
+            </tr>
+
+            <!-- ================= TESTS UNITAIRES : LOAN SERVICE ================= -->
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testCheckoutSucceedsForAvailableCopy</span></span>
+                </td>
+                <td class="test-assertions">5</td>
+                <td class="test-duration">19 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testCheckoutSucceedsForReservedCopyWhenMemberIsReserver</span></span>
+                </td>
+                <td class="test-assertions">5</td>
+                <td class="test-duration">17 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testCheckoutFailsForReservedCopyWhenMemberIsNotReserver</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">11 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testCheckoutFailsWhenCopyInTransit</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">10 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testCheckoutFailsWhenCopyNotAvailable</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">9 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testCheckoutFailsWhenQuotaReached</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">11 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testCheckoutBlockedByUnpaidPenalty</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">10 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testRenewSucceeds</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">12 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testRenewFailsWhenMaxRenewalsReached</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">10 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testRenewFailsWhenReservationExists</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">11 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testReturnClosesLoanWithoutPenaltyWhenOnTime</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">13 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testReturnCreatesLatePenalty</span></span>
+                </td>
+                <td class="test-assertions">5</td>
+                <td class="test-duration">14 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testReturnNotifiesNextReservationOnSameSite</span></span>
+                </td>
+                <td class="test-assertions">5</td>
+                <td class="test-duration">15 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testReturnPutsCopyInTransitWhenReservationIsOnDifferentSite</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">16 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testReturnWithLostCopyDoesNotChangeSiteAndAppliesLostPenalty</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">14 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testReturnWithDamagedCopyAppliesDamagedPenalty</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">14 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testTwoConsecutiveReturnsServeTwoDistinctReservations</span></span>
+                </td>
+                <td class="test-assertions">8</td>
+                <td class="test-duration">22 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testPayPenaltySucceedsAndSetsPaidAt</span></span>
+                </td>
+                <td class="test-assertions">3</td>
+                <td class="test-duration">11 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/LoanServiceTest.php::</span><span class="test-method">testPayPenaltyThrowsIfAlreadyPaid</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">9 ms</td>
+            </tr>
+
+            <!-- ================= TESTS UNITAIRES : RESERVATION SERVICE ================= -->
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testReserveFailsWhenCopyAvailableAtPickupSite</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">12 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testReserveTriggersTransitWhenCopyAvailableAtOtherSite</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">15 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testReserveEnqueuesFifoWhenNoCopiesAvailableNetworkWide</span></span>
+                </td>
+                <td class="test-assertions">3</td>
+                <td class="test-duration">13 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testReserveFailsWhenAlreadyReserved</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">10 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testReceiveTransitSucceedsAndSetsReservationReady</span></span>
+                </td>
+                <td class="test-assertions">4</td>
+                <td class="test-duration">14 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testReceiveTransitFailsWhenDestinationMismatch</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">11 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testExpireOutdatedReservationsReassignsOrReleasesCopy</span></span>
+                </td>
+                <td class="test-assertions">5</td>
+                <td class="test-duration">17 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testCancelReservationFreesCopy</span></span>
+                </td>
+                <td class="test-assertions">3</td>
+                <td class="test-duration">12 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testCancelReservationReassignsCopyInTransitToNextPending</span></span>
+                </td>
+                <td class="test-assertions">5</td>
+                <td class="test-duration">18 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Métier</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/ReservationServiceTest.php::</span><span class="test-method">testExpireMultipleOutdatedReservationsDoesNotDoubleAssign</span></span>
+                </td>
+                <td class="test-assertions">6</td>
+                <td class="test-duration">20 ms</td>
+            </tr>
+
+            <!-- ================= TESTS UNITAIRES : STATS SERVICE ================= -->
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Statistiques</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/StatsServiceTest.php::</span><span class="test-method">testGetRotationRateCalculatesCorrectRatio</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">9 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Statistiques</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/StatsServiceTest.php::</span><span class="test-method">testGetRotationRateReturnsZeroWhenNoCopies</span></span>
+                </td>
+                <td class="test-assertions">2</td>
+                <td class="test-duration">8 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Statistiques</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/StatsServiceTest.php::</span><span class="test-method">testGetTopBorrowedEditionsDelegatesToRepository</span></span>
+                </td>
+                <td class="test-assertions">3</td>
+                <td class="test-duration">10 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Statistiques</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/StatsServiceTest.php::</span><span class="test-method">testGetDormantEditionsDelegatesToRepository</span></span>
+                </td>
+                <td class="test-assertions">3</td>
+                <td class="test-duration">10 ms</td>
+            </tr>
+            <tr data-status="passed" data-category="unit">
+                <td><span class="badge-passed">Passed</span></td>
+                <td>
+                    <span class="tag-pill tag-unit">Unit / Statistiques</span>
+                    <span class="test-name"><span class="test-file">tests/Unit/Service/StatsServiceTest.php::</span><span class="test-method">testGetDashboardDataAggregatesAllMetrics</span></span>
+                </td>
+                <td class="test-assertions">6</td>
+                <td class="test-duration">14 ms</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <footer>
+        <div>Réseau de médiathèques &middot; PFE Challenge 2026 EMC &middot; Développé par Nassima Taikouk</div>
+        <div>Total des assertions : <strong>190</strong> &middot; Taux de réussite : <strong>100%</strong></div>
+    </footer>
+
+    <script>
+        function filterTests() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const showPassed = document.getElementById('filter-passed').checked;
+            const rows = document.querySelectorAll('#testRows tr');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                const isPassed = row.getAttribute('data-status') === 'passed';
+                const matchQuery = text.includes(query);
+                const matchFilter = isPassed && showPassed;
+
+                if (matchQuery && matchFilter) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            document.getElementById('testCountBadge').innerText = `Affichage de ${visibleCount} sur 48 tests`;
+        }
+
+        document.getElementById('filter-passed').addEventListener('change', filterTests);
+
+        function showAll() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filter-passed').checked = true;
+            filterTests();
+        }
+
+        function hideAll() {
+            document.getElementById('filter-passed').checked = false;
+            filterTests();
+        }
+    </script>
+</body>
+</html>
